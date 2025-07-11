@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Performance Calculation</title>
+    <!-- Plotly.js library from a CDN -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <style>
+        /* General Body and Font Styling */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .main-title {
+            text-align: center;
+            color: #005a9c;
+            margin-bottom: 25px;
+        }
+
+        /* Main App Container using Flexbox */
+        .app-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            max-width: 1600px;
+            margin: 0 auto;
+            /* --- KEY CHANGE: Stop vertical stretching --- */
+            align-items: flex-start; 
+        }
+
+        .left-column {
+            flex: 1;
+            min-width: 340px;
+            display: flex;
+            flex-direction: column;
+            position: sticky; /* Makes the input column stick on scroll */
+            top: 20px;
+        }
+
+        .right-column {
+            flex: 2;
+            min-width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .input-cards-container {
+            display: flex;
+            gap: 25px;
+            flex-grow: 1; 
+            transition: flex-direction 0.4s ease;
+        }
+        
+        .input-cards-container.stacked {
+            flex-direction: column;
+        }
+        
+        .card {
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
+        }
+        
+        .input-cards-container .card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .right-column .card { min-height: 400px; }
+        .right-column .card:first-child { min-height: 450px; }
+
+
+        .hidden { display: none; }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.4em;
+            color: #005a9c;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        fieldset { border: none; padding: 0; margin: 0; flex-grow: 1; }
+        .params-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .param-item { display: grid; grid-template-columns: 1fr 100px; gap: 10px; align-items: center; }
+        .param-item label { font-weight: 500; }
+        .param-item input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; text-align: right; }
+
+        #calculateBtn {
+            display: block; width: 100%; padding: 14px;
+            font-size: 18px; font-weight: bold; color: #fff;
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 25px; 
+        }
+        #calculateBtn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0, 123, 255, 0.3); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background-color: #e9ecef; font-weight: bold; }
+        
+        .result-card { text-align: center; }
+        .result-card .result-value { font-size: 2.2em; font-weight: bold; color: #007bff; margin: 10px 0; }
+        .result-card .result-value.error { color: #dc3545; font-size: 1.5em; }
+        
+        @media (max-width: 1200px) { .input-cards-container { flex-direction: column; } }
+        @media (max-width: 992px) { .left-column { position: static; } } /* Unstick for mobile */
+    </style>
+</head>
+<body>
+    <h1 class="main-title">Electric Vehicle Performance Calculation</h1>
+    <div class="app-container">
+        <!-- LEFT COLUMN: INPUTS -->
+        <div class="left-column">
+            <div class="input-cards-container">
+                <!-- Input cards unchanged -->
+                <div class="card">
+                    <fieldset>
+                        <h2>Vehicle Parameters</h2>
+                        <div class="params-grid">
+                            <div class="param-item"><label for="mass">Mass (kg):</label><input type="number" id="mass" value="1750"></div>
+                            <div class="param-item"><label for="maxTorque">Max Motor Torque (Nm):</label><input type="number" id="maxTorque" value="310"></div>
+                            <div class="param-item"><label for="maxPower">Max Motor Power (kW):</label><input type="number" id="maxPower" value="150"></div>
+                            <div class="param-item"><label for="wheelRadius">Wheel Radius (m):</label><input type="number" id="wheelRadius" step="0.001" value="0.346"></div>
+                            <div class="param-item"><label for="gearRatio">Gear Ratio:</label><input type="number" id="gearRatio" step="0.01" value="10.68"></div>
+                            <div class="param-item"><label for="efficiency">Drivetrain Efficiency (%):</label><input type="number" id="efficiency" step="1" value="90"></div>
+                            <div class="param-item"><label for="dragCoefficient">Drag Coefficient (Cd):</label><input type="number" id="dragCoefficient" step="0.01" value="0.29"></div>
+                            <div class="param-item"><label for="frontalArea">Frontal Area (m²):</label><input type="number" id="frontalArea" step="0.1" value="2.5"></div>
+                            <div class="param-item"><label for="rollingResistance">Rolling Resistance Coeff.:</label><input type="number" id="rollingResistance" step="0.001" value="0.018"></div>
+                            <div class="param-item"><label for="massFactor">Rotational Mass Factor (%):</label><input type="number" id="massFactor" value="5"></div>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="card">
+                    <fieldset>
+                        <h2>Max Slope Calculation</h2>
+                        <div class="params-grid">
+                            <div class="param-item"><label for="targetSpeed">Target Speed (km/h):</label><input type="number" id="targetSpeed" value="60"></div>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="card">
+                    <fieldset>
+                        <h2>Acceleration Analysis</h2>
+                        <div class="params-grid">
+                            <div class="param-item"><label for="accelStartSpeed">Start Speed (km/h):</label><input type="number" id="accelStartSpeed" value="0"></div>
+                            <div class="param-item"><label for="accelEndSpeed">End Speed (km/h):</label><input type="number" id="accelEndSpeed" value="100"></div>
+                            <div class="param-item"><label for="accelGrade">Grade (degrees):</label><input type="number" id="accelGrade" value="0"></div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+            <button id="calculateBtn">Calculate All</button>
+        </div>
+
+        <!-- RIGHT COLUMN: RESULTS (Initially Hidden) -->
+        <div class="right-column hidden">
+            <div class="card">
+                <div id="motorPlotContainer"></div>
+            </div>
+            <div class="card">
+                <div id="vehiclePlotContainer"></div>
+                <div id="resultsTableContainer" class="hidden"></div>
+            </div>
+            <div class="card">
+                <div class="result-card" id="gradeAtSpeedResult"></div>
+            </div>
+            <div class="card">
+                <div class="result-card" id="accelResult"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // All JavaScript logic remains the same as the previous version.
+        const G = 9.81;
+        const RHO = 1.225;
+        const calculateBtn = document.getElementById('calculateBtn');
+        const resultsColumn = document.querySelector('.right-column');
+        const resultsTableContainer = document.getElementById('resultsTableContainer');
+        const inputCardsContainer = document.querySelector('.input-cards-container');
+
+        function runAnalysis() {
+            resultsColumn.classList.remove('hidden');
+            resultsTableContainer.classList.remove('hidden');
+            inputCardsContainer.classList.add('stacked');
+
+            const params = {
+                mass: parseFloat(document.getElementById('mass').value),
+                maxTorque: parseFloat(document.getElementById('maxTorque').value),
+                maxPower: parseFloat(document.getElementById('maxPower').value) * 1000,
+                wheelRadius: parseFloat(document.getElementById('wheelRadius').value),
+                gearRatio: parseFloat(document.getElementById('gearRatio').value),
+                efficiency: parseFloat(document.getElementById('efficiency').value) / 100,
+                dragCoefficient: parseFloat(document.getElementById('dragCoefficient').value),
+                frontalArea: parseFloat(document.getElementById('frontalArea').value),
+                rollingResistance: parseFloat(document.getElementById('rollingResistance').value),
+                massFactor: parseFloat(document.getElementById('massFactor').value) / 100,
+            };
+            
+            const gradesToAnalyze = [0, 5, 10, 15, 20, 25];
+            let vehiclePlotTraces = [];
+            let tableResults = [];
+            let intersectionPoints = { x: [], y: [], text: [] };
+            gradesToAnalyze.forEach(grade => {
+                const result = analyzeGradeability(grade, params);
+                vehiclePlotTraces.push({ x: result.speeds_kmh, y: result.F_total_resistance, mode: 'lines', name: `Resistance @ ${grade}°` });
+                tableResults.push({ grade: grade, maxSpeed: result.intersection.x * 3.6 });
+                if (result.intersection.x > 0) {
+                    intersectionPoints.x.push(result.intersection.x * 3.6);
+                    intersectionPoints.y.push(result.intersection.y);
+                    intersectionPoints.text.push(`${(result.intersection.x * 3.6).toFixed(1)}`);
+                }
+            });
+            const tractiveForceResult = analyzeGradeability(0, params);
+            vehiclePlotTraces.push({ x: tractiveForceResult.speeds_kmh, y: tractiveForceResult.F_tractive, mode: 'lines', name: 'Max Tractive Force', line: { color: 'black', width: 3, dash: 'dash' } });
+            vehiclePlotTraces.push({ x: intersectionPoints.x, y: intersectionPoints.y, text: intersectionPoints.text, hoverinfo: 'text', mode: 'markers', name: 'Max Speed Points', marker: { color: 'red', size: 10, symbol: 'circle-open', line: {width: 2} } });
+            
+            const motorCurves = calculateMotorCurves(params);
+            
+            const targetSpeed = parseFloat(document.getElementById('targetSpeed').value);
+            const maxGrade = calculateMaxGradeAtSpeed(targetSpeed, params);
+            const accelStart = parseFloat(document.getElementById('accelStartSpeed').value);
+            const accelEnd = parseFloat(document.getElementById('accelEndSpeed').value);
+            const accelGrade = parseFloat(document.getElementById('accelGrade').value);
+            const accelTime = calculateAccelerationTime(accelStart, accelEnd, accelGrade, params);
+
+            // MODIFICATION: Pass the entire params object to the render function
+            renderMotorPlot(motorCurves.rpmAxis, motorCurves.torqueCurve, motorCurves.asymptoteCurve, params);
+            renderVehiclePlot(vehiclePlotTraces, Math.max(...tractiveForceResult.F_tractive), Math.max(...tractiveForceResult.speeds_kmh));
+            renderMaxSpeedTable(tableResults);
+            renderMaxGradeResult(maxGrade, targetSpeed);
+            renderAccelerationResult(accelTime, accelStart, accelEnd, accelGrade);
+        }
+
+        function calculateMotorCurves(params) {
+            const vehicleSpeedAtMaxRpm = 180;
+            const maxRpm = (vehicleSpeedAtMaxRpm / 3.6 * 60 / (2 * Math.PI * params.wheelRadius)) * params.gearRatio;
+            const rpmAxis = Array.from({ length: 201 }, (_, i) => i * (maxRpm / 200));
+            const torqueCurve = [];
+            const asymptoteCurve = [];
+            rpmAxis.forEach(rpm => {
+                const angular_velocity_rad_s = rpm * (2 * Math.PI) / 60;
+                const power_limited_torque = params.maxPower / (angular_velocity_rad_s || 1e-6);
+                torqueCurve.push(Math.min(params.maxTorque, power_limited_torque));
+                asymptoteCurve.push(Math.min(power_limited_torque, params.maxTorque * 2));
+            });
+            return { rpmAxis, torqueCurve, asymptoteCurve };
+        }
+        function analyzeGradeability(angle_deg, params) { 
+            const angle_rad = angle_deg * (Math.PI / 180);
+            const speeds_ms = Array.from({ length: 201 }, (_, i) => i * (50 / 200));
+            const F_roll = params.rollingResistance * params.mass * G * Math.cos(angle_rad);
+            const F_grade = params.mass * G * Math.sin(angle_rad);
+            const F_aero = speeds_ms.map(v => 0.5 * RHO * params.dragCoefficient * params.frontalArea * v**2);
+            const F_total_resistance = F_aero.map(fa => F_roll + F_grade + fa);
+            const F_torque_limited = (params.maxTorque * params.gearRatio * params.efficiency) / params.wheelRadius;
+            const F_tractive = speeds_ms.map(v => {
+                const F_power_limited = (params.maxPower * params.efficiency) / (v || 1e-6);
+                return Math.min(F_torque_limited, F_power_limited);
+            });
+            let intersection = { x: 0, y: 0 };
+            for (let i = speeds_ms.length - 1; i >= 0; i--) {
+                if (F_tractive[i] >= F_total_resistance[i]) {
+                    intersection.x = speeds_ms[i];
+                    intersection.y = F_tractive[i];
+                    break;
+                }
+            }
+            return { speeds_kmh: speeds_ms.map(v => v * 3.6), F_total_resistance, F_tractive, intersection };
+        }
+        function calculateMaxGradeAtSpeed(targetSpeed_kmh, params) {
+            const speed_ms = targetSpeed_kmh / 3.6;
+            const F_torque_limited = (params.maxTorque * params.gearRatio * params.efficiency) / params.wheelRadius;
+            const F_power_limited = (params.maxPower * params.efficiency) / (speed_ms || 1e-6);
+            const F_tractive = Math.min(F_torque_limited, F_power_limited);
+            const F_rolling_flat = params.rollingResistance * params.mass * G;
+            const F_aero = 0.5 * RHO * params.dragCoefficient * params.frontalArea * speed_ms**2;
+            const F_available_for_grade = F_tractive - F_rolling_flat - F_aero;
+            if (F_available_for_grade <= 0) return 0;
+            const sin_theta = F_available_for_grade / (params.mass * G);
+            return Math.asin(Math.min(sin_theta, 1.0)) * (180 / Math.PI);
+        }
+        function calculateAccelerationTime(startSpeed_kmh, endSpeed_kmh, grade_deg, params) {
+            if (startSpeed_kmh >= endSpeed_kmh) return 0;
+            const start_ms = startSpeed_kmh / 3.6;
+            const end_ms = endSpeed_kmh / 3.6;
+            const grade_rad = grade_deg * (Math.PI / 180);
+            const dt = 0.05;
+            let time = 0;
+            let current_speed_ms = start_ms;
+            const effectiveMass = params.mass * (1 + params.massFactor);
+            const F_grade = params.mass * G * Math.sin(grade_rad);
+            while (current_speed_ms < end_ms) {
+                const F_torque_limited = (params.maxTorque * params.gearRatio * params.efficiency) / params.wheelRadius;
+                const F_power_limited = (params.maxPower * params.efficiency) / (current_speed_ms || 1e-6);
+                const F_tractive = Math.min(F_torque_limited, F_power_limited);
+                const F_rolling = params.rollingResistance * params.mass * G * Math.cos(grade_rad);
+                const F_aero = 0.5 * RHO * params.dragCoefficient * params.frontalArea * current_speed_ms**2;
+                const F_resistance = F_rolling + F_aero + F_grade;
+                const F_net = F_tractive - F_resistance;
+                if (F_net <= 0) return Infinity;
+                const acceleration = F_net / effectiveMass;
+                current_speed_ms += acceleration * dt;
+                time += dt;
+                if (time > 120) return Infinity;
+            }
+            return time;
+        }
+
+        // --- MODIFIED FUNCTION ---
+        function renderMotorPlot(rpm, torque, asymptote, params) {
+            // Calculate the "corner speed" RPM where rated torque delivers rated power
+            const cornerRpm = (params.maxPower * 60) / (params.maxTorque * 2 * Math.PI);
+
+            const traces = [
+                { x: rpm, y: torque, mode: 'lines', name: 'Actual Motor Torque', line: {color: 'royalblue', width: 3} },
+                { x: rpm, y: asymptote, mode: 'lines', name: 'Power Limit Asymptote', line: {color: 'skyblue', width: 2, dash: 'dash'} },
+                // Add a marker for the rated power point
+                {
+                    x: [cornerRpm],
+                    y: [params.maxTorque],
+                    mode: 'markers',
+                    name: 'Rated Power Point',
+                    marker: {
+                        symbol: 'circle',
+                        color: '#dc3545', // A strong red
+                        size: 12,
+                        line: {
+                            color: 'white',
+                            width: 2
+                        }
+                    },
+                    hoverinfo: 'none' // Annotation will provide the info
+                }
+            ];
+
+            const layout = {
+                title: '<b>Motor Torque vs. Speed Curve</b>',
+                xaxis: { title: 'Motor Speed (RPM)', automargin: true },
+                yaxis: { title: 'Motor Torque (Nm)', range: [0, params.maxTorque * 1.5], automargin: true },
+                legend: { x: 1, xanchor: 'right', y: 1 },
+                margin: { t: 50, b: 50, l: 60, r: 20 },
+                // Add an annotation to label the rated power point
+                annotations: [
+                    {
+                        x: cornerRpm,
+                        y: params.maxTorque,
+                        xref: 'x',
+                        yref: 'y',
+                        text: `<b>Rated Power (${(params.maxPower / 1000).toFixed(0)} kW) <br> at ${cornerRpm.toFixed(0)} RPM</b>`,
+                        showarrow: true,
+                        font: {
+                            family: 'Arial, sans-serif',
+                            size: 12,
+                            color: '#ffffff'
+                        },
+                        align: 'center',
+                        arrowhead: 2,
+                        arrowsize: 1,
+                        arrowwidth: 2,
+                        arrowcolor: '#dc3545',
+                        ax: 60,  // Horizontal offset for the text
+                        ay: -40, // Vertical offset for the text
+                        bordercolor: '#dc3545',
+                        borderwidth: 2,
+                        borderpad: 4,
+                        bgcolor: '#dc3545',
+                        opacity: 0.9
+                    }
+                ]
+            };
+            Plotly.newPlot('motorPlotContainer', traces, layout, { responsive: true });
+        }
+        
+        function renderVehiclePlot(traces, yMax, xMax) {
+            const layout = {
+                title: '<b>Vehicle Tractive Force vs. Velocity</b>',
+                xaxis: { title: 'Velocity (km/h)', range: [0, xMax * 1.05], automargin: true },
+                yaxis: { title: 'Force (N)', range: [0, yMax * 1.1], automargin: true },
+                legend: { x: 0.5, xanchor: 'center', y: -0.25, orientation: 'h' },
+                hovermode: 'x unified',
+                margin: { t: 50, b: 100, l: 60, r: 20 }
+            };
+            Plotly.newPlot('vehiclePlotContainer', traces, layout, { responsive: true });
+        }
+        function renderMaxSpeedTable(results) {
+            const container = document.getElementById('resultsTableContainer');
+            let tableHTML = `
+                <h2>Maximum Sustainable Speed</h2>
+                <table><thead><tr><th>Grade (degrees)</th><th>Max Speed (km/h)</th></tr></thead><tbody>`;
+            results.forEach(res => {
+                tableHTML += `<tr><td>${res.grade}°</td><td>${res.maxSpeed.toFixed(1)}</td></tr>`;
+            });
+            tableHTML += `</tbody></table>`;
+            container.innerHTML = tableHTML;
+        }
+        function renderMaxGradeResult(grade, speed) {
+            const container = document.getElementById('gradeAtSpeedResult');
+            container.innerHTML = `
+                <h2>Max Slope at Target Speed</h2>
+                <p>To maintain <strong>${speed} km/h</strong>, the max slope is:</p>
+                <p class="result-value">${grade.toFixed(1)}°</p>`;
+        }
+        function renderAccelerationResult(time, start, end, grade) {
+            const container = document.getElementById('accelResult');
+            let resultHTML;
+            if (time === Infinity) {
+                resultHTML = `
+                    <p class="result-value error">Not Possible</p>
+                    <p>The vehicle cannot reach ${end} km/h under these conditions.</p>`;
+            } else {
+                resultHTML = `
+                    <p class="result-value">${time.toFixed(2)} s</p>
+                    <p>on a <strong>${grade}°</strong> slope.</p>`;
+            }
+            container.innerHTML = `
+                <h2>Acceleration: ${start}-${end} km/h</h2>
+                ${resultHTML}`;
+        }
+
+        calculateBtn.addEventListener('click', runAnalysis);
+    </script>
+</body>
+</html>
