@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Induction Motor Torque-Speed Curve Plotter</title>
+
+    <!-- Google Fonts & Icons for Material Design -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Chart.js Library from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
+
+
+    <style>
+        /* --- General & Root Styles --- */
+        :root {
+            --primary-color: #111111; /* Teal */
+            --primary-light: #00a2ec;
+            --accent-color: #ff5722; /* Deep Orange */
+            --background-color: #f4f4f9;
+            --card-background: #ffffff;
+            --text-color: #333;
+            --text-light: #666;
+            --border-color: #e0e0e0;
+            --shadow: 0 3px 6px rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px; /* Increased max-width for new layout */
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-weight: 400;
+            color: var(--primary-color);
+        }
+
+        /* --- NEW LAYOUT STYLES --- */
+        .top-row {
+            margin-bottom: 25px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 450px 1fr; /* Fixed column for controls, rest for plot */
+            gap: 25px;
+            align-items: start; /* Align items to the top of their grid cell */
+        }
+
+        /* --- Card Styling --- */
+        .card {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 25px;
+        }
+        
+        .card h2 {
+            font-weight: 500;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        /* --- Specific Card Content --- */
+        .info-card .image-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .info-card img {
+            max-width: 300px; /* Set a max-width for images in top row */
+            height: auto;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        
+        /* --- Controls & Forms --- */
+        .param-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .param-group label {
+            flex-basis: 45%; /* Give label a fixed basis */
+            font-weight: 500;
+            color: var(--text-light);
+            margin-right: 15px;
+        }
+
+        .param-group input[type="text"], .param-group input[type="number"], .param-group select {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .param-group input:focus, .param-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px var(--primary-light);
+        }
+
+        .help-icon {
+            margin-left: 10px;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .help-icon:hover {
+            color: var(--primary-light);
+        }
+
+        #plotButton, #showDataButton {
+            width: 100%;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+            margin-top: 10px;
+        }
+        
+        #plotButton {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+
+        #plotButton:hover {
+            background-color: var(--primary-light);
+        }
+        
+        #showDataButton {
+             background-color: var(--primary-color);
+            color: white;
+            border: none;
+             margin-top: 15px;
+        }
+
+        #showDataButton:hover {
+             background-color: var(--primary-light);
+        }
+
+        /* Results Display (within plot card) */
+        .plot-results {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        .multi-result-set {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-light);
+        }
+        .multi-result-set:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .multi-result-set h4 {
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 8px;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 5px;
+        }
+        .result-label {
+            color: var(--text-light);
+        }
+        .result-value {
+            font-weight: 500;
+            color: var(--primary-color);
+            text-align: right;
+        }
+
+        /* --- Modal Styling --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px 30px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 700px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        #copyDataButton {
+            padding: 8px 12px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #copyDataButton:hover {
+            background-color: #d84315;
+        }
+
+        #dataTableContainer {
+            height: 40vh;
+            overflow-y: auto;
+            background-color: #fafafa;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+        }
+        
+        #dataTableContent {
+            white-space: pre;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+        }
+
+        .close-button {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 20px;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+        }
+
+        /* --- RESPONSIVE STYLES --- */
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr; /* Stack the columns */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Induction Motor Torque-Speed Curve Plotter</h1>
+        </header>
+
+        <main>
+            <div class="top-row">
+                <!-- Motor Info Card -->
+                <div class="card info-card">
+                    <h2>Motor & Equivalent Circuit</h2>
+                    <div class="image-container">
+                        <img src="https://i.imgur.com/8QZ7x5h.png" alt="Induction Motor Cross-Section">
+                        <img src="https://i.imgur.com/eB4dYgT.png" alt="Per-Phase Equivalent Circuit">
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <!-- Controls Card -->
+                <div class="card controls-card">
+                    <h2>Parameters</h2>
+                    <form id="paramForm">
+                        <div class="param-group">
+                            <label for="v_ll">Line Voltage (V L-L)</label>
+                            <input type="text" id="v_ll" value="400, 300, 200">
+                            <i class="material-icons help-icon" data-param="v_ll">help_outline</i>
+                        </div>
+                        <div class="param-group">
+                            <label for="freq">Frequency (Hz)</label>
+                            <input type="text" id="freq" value="50, 37.5, 25">
+                            <i class="material-icons help-icon" data-param="freq">help_outline</i>
+                        </div>
+                        <div class="param-group">
+                            <label for="poles">Number of Poles</label>
+                            <input type="number" id="poles" value="4" step="2">
+                            <i class="material-icons help-icon" data-param="poles">help_outline</i>
+                        </div>
+                        <hr style="margin: 20px 0; border: 1px solid var(--border-color);">
+                        <div class="param-group">
+                            <label for="r1">R1 (Stator Res, Ω)</label>
+                            <input type="number" id="r1" value="0.641" step="0.01">
+                            <i class="material-icons help-icon" data-param="r1">help_outline</i>
+                        </div>
+                        <div class="param-group">
+                            <label for="l1">L1 (Stator Leakage, H)</label>
+                            <input type="number" id="l1" value="0.00352" step="0.0001">
+                            <i class="material-icons help-icon" data-param="l1">help_outline</i>
+                        </div>
+                        <div class="param-group">
+                            <label for="r2">R2' (Rotor Res, Ω)</label>
+                            <input type="number" id="r2" value="0.332" step="0.01">
+                            <i class="material-icons help-icon" data-param="r2">help_outline</i>
+                        </div>
+                        <div class="param-group">
+                            <label for="l2">L2' (Rotor Leakage, H)</label>
+                            <input type="number" id="l2" value="0.00148" step="0.0001">
+                            <i class="material-icons help-icon" data-param="l2">help_outline</i>
+                        </div>
+                        <div class="param-group">
+                            <label for="lm">Lm (Magnetizing, H)</label>
+                            <input type="number" id="lm" value="0.0837" step="0.001">
+                            <i class="material-icons help-icon" data-param="lm">help_outline</i>
+                        </div>
+                        <hr style="margin: 20px 0; border: 1px solid var(--border-color);">
+                        <div class="param-group">
+                            <label for="xAxisSelect">X-Axis Variable</label>
+                            <select id="xAxisSelect">
+                                <option value="rpm" selected>Speed (rpm)</option>
+                                <option value="slip">Slip (s)</option>
+                            </select>
+                        </div>
+
+                        <button type="button" id="plotButton">Update Plot</button>
+                    </form>
+                </div>
+
+                <!-- Plot Card -->
+                <div class="card plot-card">
+                    <h2>Torque-Speed Curve</h2>
+                    <div style="position: relative; min-height: 500px;">
+                        <canvas id="torqueSpeedChart"></canvas>
+                    </div>
+                    <div class="plot-results">
+                        <div id="resultsList"></div>
+                        <button type="button" id="showDataButton">Show Data Table</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+             <div class="modal-header">
+                <h3 id="modalTitle">Parameter Help</h3>
+                <span class="close-button" data-modal-id="helpModal">&times;</span>
+            </div>
+            <p id="modalText">Information about the parameter will appear here.</p>
+        </div>
+    </div>
+    
+    <!-- Data Table Modal -->
+    <div id="dataModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Plot Data Table</h3>
+                <div>
+                     <button id="copyDataButton">Copy to Clipboard</button>
+                     <span class="close-button" data-modal-id="dataModal">&times;</span>
+                </div>
+            </div>
+            <div id="dataTableContainer">
+                <pre id="dataTableContent"></pre>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let torqueSpeedChart = null;
+            let fullDataTable = { headers: [], rows: [] };
+
+            const paramExplanations = {
+                v_ll: { title: 'Line-to-Line Voltage (V L-L)', text: 'The RMS voltage supplying the motor. Use a comma-separated list to plot multiple curves (e.g., "400, 200").' },
+                freq: { title: 'Supply Frequency (Hz)', text: 'The frequency of the power supply. Use a comma-separated list to plot multiple curves (e.g., "50, 25"). The number of entries must match the voltages.' },
+                poles: { title: 'Number of Poles (P)', text: 'The total number of magnetic poles in the stator winding. Must be an even number. Along with frequency, it sets the synchronous speed (N_sync = 120 * f / P).' },
+                r1: { title: 'Stator Resistance (R1)', text: 'The per-phase resistance of the stator winding. It causes I²R losses (heat) in the stator.' },
+                l1: { title: 'Stator Leakage Inductance (L1)', text: 'The per-phase inductance of the stator winding due to leakage flux that does not cross the air gap. Used to calculate stator reactance (X1).' },
+                r2: { title: 'Rotor Resistance (R2\')', text: 'The per-phase resistance of the rotor winding, referred to the stator side. This value is critical for determining starting torque.' },
+                l2: { title: 'Rotor Leakage Inductance (L2\')', text: 'The per-phase inductance of the rotor winding, referred to the stator side. This value is critical for determining the slip at which maximum torque occurs.' },
+                lm: { title: 'Magnetizing Inductance (Lm)', text: 'The per-phase inductance representing the magnetizing current required to establish the main magnetic flux. Used to calculate magnetizing reactance (Xm).' }
+            };
+
+            /**
+             * Converts a hex color string to a hex string with an alpha channel.
+             * @param {string} hex The hex color string (e.g., '#RRGGBB').
+             * @param {number} alpha The alpha value from 0 to 1.
+             * @returns {string} The hex color string with alpha (e.g., '#RRGGBBXX').
+             */
+            function addAlphaToHex(hex, alpha) {
+                const alphaValue = Math.round(alpha * 255);
+                const alphaHex = (alphaValue < 16 ? '0' : '') + alphaValue.toString(16);
+                return hex + alphaHex;
+            }
+
+            function calculateSingleCurveData(v_ll, f, p, r1, l1, r2, l2, lm, xAxisType) {
+                const omega_e = 2 * Math.PI * f;
+                const v_ph = v_ll / Math.sqrt(3);
+                const n_sync = (120 * f) / p;
+                const w_sync = omega_e / (p / 2);
+
+                const x1 = omega_e * l1;
+                const x2 = omega_e * l2;
+                const xm = omega_e * lm;
+
+                const z_th_complex_denom = r1 * r1 + (x1 + xm) * (x1 + xm);
+                const r_th = (r1 * xm * xm) / z_th_complex_denom;
+                const x_th = (r1 * r1 * xm + x1 * xm * (x1 + xm)) / z_th_complex_denom;
+                const v_th = v_ph * (xm / Math.sqrt(z_th_complex_denom));
+
+                const plotPoints = [];
+                const steps = 400;
+
+                for (let i = steps; i >= 0; i--) {
+                    const s = i / steps;
+                    let torque = 0;
+                    if (s > 0) {
+                        const denom = Math.pow(r_th + r2 / s, 2) + Math.pow(x_th + x2, 2);
+                        torque = (3 * v_th * v_th * (r2 / s)) / (w_sync * denom);
+                    }
+                    const speed_rpm = n_sync * (1 - s);
+                    const xAxisValue = (xAxisType === 'rpm') ? speed_rpm : s;
+                    plotPoints.push({ x: xAxisValue, y: torque });
+                }
+
+                const s_max = r2 / Math.sqrt(r_th * r_th + Math.pow(x_th + x2, 2));
+                const t_start = plotPoints.find(p => (xAxisType === 'rpm' && p.x === 0) || (xAxisType === 'slip' && p.x === 1))?.y || 0;
+                const t_max = (s_max > 0 && s_max <= 1) ? (3 * v_th * v_th * (r2 / s_max)) / (w_sync * (Math.pow(r_th + r2 / s_max, 2) + Math.pow(x_th + x2, 2))) : 0;
+                const n_max_torque = n_sync * (1 - s_max);
+
+                const specialPoints = [
+                    { x: xAxisType === 'rpm' ? 0 : 1, y: t_start },
+                    { x: xAxisType === 'rpm' ? n_max_torque : s_max, y: t_max }
+                ];
+
+                return {
+                    plotPoints,
+                    specialPoints,
+                    results: { n_sync, t_start, t_max, n_max_torque }
+                };
+            }
+
+            function drawPlot() {
+                const v_ll_str = document.getElementById('v_ll').value;
+                const freq_str = document.getElementById('freq').value;
+                const p = parseInt(document.getElementById('poles').value);
+                const r1 = parseFloat(document.getElementById('r1').value);
+                const l1 = parseFloat(document.getElementById('l1').value);
+                const r2 = parseFloat(document.getElementById('r2').value);
+                const l2 = parseFloat(document.getElementById('l2').value);
+                const lm = parseFloat(document.getElementById('lm').value);
+                const xAxisType = document.getElementById('xAxisSelect').value;
+
+                const voltages = v_ll_str.split(',').map(s => parseFloat(s.trim()));
+                const frequencies = freq_str.split(',').map(s => parseFloat(s.trim()));
+
+                if (voltages.length !== frequencies.length) {
+                    alert("Error: The number of comma-separated voltages must match the number of frequencies.");
+                    return;
+                }
+                if (voltages.some(isNaN) || frequencies.some(isNaN)) {
+                    alert("Error: Please enter valid numbers for voltage and frequency.");
+                    return;
+                }
+
+                const colorPalette = ['#00796b', '#ff5722', '#3f51b5', '#e91e63', '#9c27b0', '#03a9f4'];
+                const chartDatasets = [];
+                const allResults = [];
+                const allPlotPoints = [];
+                fullDataTable.headers = [(xAxisType === 'rpm') ? 'Speed (rpm)' : 'Slip (s)'];
+                
+                for (let i = 0; i < voltages.length; i++) {
+                    const v_ll = voltages[i];
+                    const f = frequencies[i];
+                    const color = colorPalette[i % colorPalette.length];
+                    const label = `${v_ll}V / ${f}Hz`;
+
+                    const data = calculateSingleCurveData(v_ll, f, p, r1, l1, r2, l2, lm, xAxisType);
+                    allResults.push({ label, ...data.results });
+                    allPlotPoints.push(data.plotPoints);
+                    fullDataTable.headers.push(`Torque (${label})`);
+
+                    // Main torque curve line
+                    chartDatasets.push({
+                        label: label,
+                        data: data.plotPoints,
+                        borderColor: color,
+                        backgroundColor: addAlphaToHex(color, 0.15),
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        fill: true,
+                        order: 1 
+                    });
+
+                    // Key points markers
+                    chartDatasets.push({
+                        type: 'scatter',
+                        label: `Key Points for ${label}`,
+                        data: data.specialPoints,
+                        backgroundColor: color,
+                        pointRadius: 6,
+                        pointHoverRadius: 9,
+                        showLine: false,
+                        order: 0
+                    });
+                }
+                
+                updateResultsDisplay(allResults);
+                prepareDataTable(allPlotPoints, xAxisType);
+                
+                const canvas = document.getElementById('torqueSpeedChart');
+                if (torqueSpeedChart) torqueSpeedChart.destroy();
+                
+                torqueSpeedChart = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: { datasets: chartDatasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                title: { display: true, text: (xAxisType === 'rpm') ? 'Rotor Speed (rpm)' : 'Slip (s)', font: { size: 14, weight: '500' } },
+                                reverse: xAxisType === 'slip'
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Torque (Nm)', font: { size: 14, weight: '500' } }
+                            }
+                        },
+                        plugins: {
+                            tooltip: { mode: 'index', intersect: false },
+                            legend: {
+                                display: voltages.length > 1,
+                                labels: {
+                                    filter: item => !item.text.includes('Key Points')
+                                }
+                            }
+                        },
+                        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                    }
+                });
+            }
+
+            function updateResultsDisplay(allResults) {
+                const resultsList = document.getElementById('resultsList');
+                resultsList.innerHTML = '';
+                allResults.forEach(res => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'multi-result-set';
+                    resultDiv.innerHTML = `
+                        <h4>${res.label}</h4>
+                        <div class="result-item">
+                            <span class="result-label">Synchronous Speed:</span>
+                            <span class="result-value">${res.n_sync.toFixed(0)} rpm</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Starting Torque:</span>
+                            <span class="result-value">${res.t_start.toFixed(2)} Nm</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Maximum Torque:</span>
+                            <span class="result-value">${res.t_max.toFixed(2)} Nm @ ${res.n_max_torque.toFixed(0)} rpm</span>
+                        </div>
+                    `;
+                    resultsList.appendChild(resultDiv);
+                });
+            }
+
+            function prepareDataTable(allPlotPoints, xAxisType) {
+                fullDataTable.rows = [];
+                if (allPlotPoints.length === 0) return;
+
+                const masterXPoints = allPlotPoints[0].map(p => p.x);
+                
+                for (let i = 0; i < masterXPoints.length; i++) {
+                    const row = [xAxisType === 'slip' ? masterXPoints[i].toFixed(4) : masterXPoints[i].toFixed(2)];
+                    for (let j = 0; j < allPlotPoints.length; j++) {
+                        row.push(allPlotPoints[j][i].y.toFixed(3));
+                    }
+                    fullDataTable.rows.push(row);
+                }
+                fullDataTable.rows.reverse();
+            }
+
+            function populateDataTable() {
+                const maxPoints = 50;
+                const data = fullDataTable.rows;
+                const step = Math.max(1, Math.ceil(data.length / maxPoints));
+                
+                let tableString = fullDataTable.headers.join('\t') + '\n';
+                
+                for(let i = 0; i < data.length; i += step) {
+                    tableString += data[i].join('\t') + '\n';
+                }
+
+                document.getElementById('dataTableContent').textContent = tableString;
+            }
+
+            // --- Event Listeners Setup ---
+            document.getElementById('plotButton').addEventListener('click', drawPlot);
+            document.getElementById('xAxisSelect').addEventListener('change', drawPlot);
+            
+            document.getElementById('showDataButton').addEventListener('click', () => {
+                populateDataTable();
+                document.getElementById('dataModal').style.display = 'block';
+            });
+            
+            document.getElementById('copyDataButton').addEventListener('click', () => {
+                const copyButton = document.getElementById('copyDataButton');
+                navigator.clipboard.writeText(document.getElementById('dataTableContent').textContent).then(() => {
+                    copyButton.textContent = "Copied!";
+                    setTimeout(() => { copyButton.textContent = "Copy to Clipboard"; }, 2000);
+                });
+            });
+            
+            document.querySelectorAll('.help-icon').forEach(icon => {
+                icon.addEventListener('click', (e) => {
+                    const info = paramExplanations[e.target.dataset.param];
+                    if (info) {
+                        document.getElementById('modalTitle').textContent = info.title;
+                        document.getElementById('modalText').textContent = info.text;
+                        document.getElementById('helpModal').style.display = 'block';
+                    }
+                });
+            });
+
+            document.querySelectorAll('.close-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    document.getElementById(e.target.dataset.modalId).style.display = 'none';
+                });
+            });
+            
+            window.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal')) {
+                    e.target.style.display = 'none';
+                }
+            });
+
+            // Initial plot on page load
+            drawPlot();
+        });
+    </script>
+
+</body>
+</html>

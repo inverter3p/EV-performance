@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corrected RMF & Space Vector Animation</title>
+    <style>
+        :root {
+            --color-a: #e74c3c; /* Red */
+            --color-b: #2ecc71; /* Green */
+            --color-c: #3498db; /* Blue */
+            --color-rmf: #f1c40f; /* Yellow/Gold for the resultant vector */
+            --color-rotor-n: #e74c3c;
+            --color-rotor-s: #3498db;
+            --color-bg: #ecf0f1;
+            --color-text: #2c3e50;
+            --color-container-bg: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 25px;
+            background-color: var(--color-container-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .visualization-panel { text-align: center; }
+        h2 { margin-top: 0; margin-bottom: 10px; font-weight: 600; }
+        svg { border: 1px solid #bdc3c7; border-radius: 8px; background-color: #fdfdfd; }
+
+        .controls {
+            width: 100%; display: flex; flex-direction: column; align-items: center;
+            gap: 15px; padding: 15px; border-top: 1px solid #e0e0e0; margin-top: 10px;
+        }
+        /* NEW: Wrapper for the sliders */
+        .slider-group {
+            display: flex;
+            gap: 25px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .slider-container { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+        input[type="range"] { width: 150px; } /* Slightly smaller width */
+        .buttons { display: flex; gap: 10px; }
+        button {
+            padding: 8px 16px; font-size: 14px; border: none; border-radius: 6px;
+            cursor: pointer; font-weight: 500; color: white;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        button:active { transform: scale(0.96); }
+        #startBtn { background-color: #27ae60; }
+        #stopBtn { background-color: #c0392b; }
+        #reverseBtn { background-color: #e67e22; }
+
+        .vector-sum { stroke: var(--color-rmf); stroke-width: 5; }
+        .winding-label { font-size: 16px; font-weight: bold; font-family: monospace; }
+        .axis, .time-cursor { stroke: #7f8c8d; stroke-width: 1; }
+        .time-cursor { stroke-dasharray: 4 2; }
+        
+        .tooltip-container {
+            display: flex;
+            gap: 20px;
+            font-size: 16px;
+            background-color: #f4f6f7;
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .tooltip-container span { font-weight: bold; }
+        .v-a { color: var(--color-a); }
+        .v-b { color: var(--color-b); }
+        .v-c { color: var(--color-c); }
+        .v-rmf { color: #b8860b; }
+        .tooltip-container sub { font-size: 0.8em; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="visualization-panel">
+            <h2>Rotating Magnetic Field (RMF)</h2>
+            <div><svg id="motor-svg" width="500" height="500"></svg></div>
+            
+        </div>
+        <div class="visualization-panel">
+            <h2>3-Phase AC Voltage</h2>
+            <div><svg id="graph-svg" width="400" height="400"></svg></div>
+            <div id="voltage-tooltip" class="tooltip-container"></div>
+            <div id="rmf-data" class="tooltip-container"></div>
+        </div>
+        <div class="controls">
+            <!-- MODIFIED: Sliders are now in a group -->
+            <div class="slider-group">
+                <div class="slider-container">
+                    <label for="speed-slider">Speed (Hz):</label>
+                    <input type="range" id="speed-slider" min="0.1" max="5" step="0.1" value="1">
+                    <span id="speed-value">1.0</span>
+                </div>
+                 <!-- NEW: Slider for number of cycles -->
+                <div class="slider-container">
+                    <label for="cycles-slider">Cycles:</label>
+                    <input type="range" id="cycles-slider" min="1" max="10" step="0.5" value="3">
+                    <span id="cycles-value">3.0</span>
+                </div>
+            </div>
+            <div class="buttons">
+                <button id="startBtn">Start</button>
+                <button id="stopBtn">Stop</button>
+                <button id="reverseBtn">Reverse</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- DOM Elements ---
+    const motorSvg = document.getElementById('motor-svg');
+    const graphSvg = document.getElementById('graph-svg');
+    const speedSlider = document.getElementById('speed-slider');
+    const speedValue = document.getElementById('speed-value');
+    const cyclesSlider = document.getElementById('cycles-slider'); // NEW
+    const cyclesValue = document.getElementById('cycles-value');   // NEW
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const reverseBtn = document.getElementById('reverseBtn');
+    const voltageTooltip = document.getElementById('voltage-tooltip');
+    const rmfDataTooltip = document.getElementById('rmf-data');
+
+    // --- Animation State ---
+    let time = 0;
+    let isPaused = true;
+    let isReversed = false;
+    let animationFrameId = null;
+
+    // --- Motor SVG Setup (No changes here) ---
+    const motorViewBoxSize = 500;
+    motorSvg.setAttribute('viewBox', `-${motorViewBoxSize/2} -${motorViewBoxSize/2} ${motorViewBoxSize} ${motorViewBoxSize}`);
+    const statorRadius = motorViewBoxSize * 0.38;
+    const windingRadius = motorViewBoxSize * 0.44;
+    const labelRadius = motorViewBoxSize * 0.49;
+    const vectorMaxMag = motorViewBoxSize * 0.25;
+    motorSvg.innerHTML = `
+        <defs>
+            <marker id="arrow-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" fill="var(--color-a)"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>
+            <marker id="arrow-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" fill="var(--color-b)"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>
+            <marker id="arrow-c" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" fill="var(--color-c)"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>
+            <marker id="arrow-sum" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse" fill="var(--color-rmf)"><path d="M 0 0 L 10 5 L 0 10 z" /></marker>
+        </defs>
+        <circle cx="0" cy="0" r="${statorRadius}" fill="none" stroke="#34495e" stroke-width="12" />
+        <g id="all-windings">${['a', 'b', 'c'].map((p, i) => { const angle = i * 2 * Math.PI / 3; const endAngle = angle + Math.PI; const color = `var(--color-${p})`; const spacing = 10; const p_cx = windingRadius * Math.cos(angle); const p_cy = windingRadius * Math.sin(angle); const p_offsetX = -Math.sin(angle) * spacing; const p_offsetY = Math.cos(angle) * spacing; const r_cx = windingRadius * Math.cos(endAngle); const r_cy = windingRadius * Math.sin(endAngle); const r_offsetX = -Math.sin(endAngle) * spacing; const r_offsetY = Math.cos(endAngle) * spacing; return `<g id="winding-group-${p}"><circle id="winding-${p}-l" cx="${p_cx + p_offsetX}" cy="${p_cy + p_offsetY}" r="0" fill="#fff" stroke="${color}" stroke-width="2.5"/><circle id="winding-${p}-r" cx="${p_cx - p_offsetX}" cy="${p_cy - p_offsetY}" r="0" fill="#fff" stroke="${color}" stroke-width="2.5"/><circle id="winding-${p}-c" cx="${p_cx}" cy="${p_cy}" r="0" fill="#fff" stroke="${color}" stroke-width="3"/><g id="winding-${p}-x" style="opacity:0;" stroke="${color}" stroke-width="2" stroke-linecap="round"><line x1="${p_cx-4}" y1="${p_cy-4}" x2="${p_cx+4}" y2="${p_cy+4}"/><line x1="${p_cx-4}" y1="${p_cy+4}" x2="${p_cx+4}" y2="${p_cy-4}"/></g><g id="winding-${p}-dot" style="opacity:0;"><circle cx="${p_cx}" cy="${p_cy}" r="3" fill="${color}"/></g><circle id="winding-${p}p-l" cx="${r_cx + r_offsetX}" cy="${r_cy + r_offsetY}" r="0" fill="#fff" stroke="${color}" stroke-width="2.5"/><circle id="winding-${p}p-r" cx="${r_cx - r_offsetX}" cy="${r_cy - r_offsetY}" r="0" fill="#fff" stroke="${color}" stroke-width="2.5"/><circle id="winding-${p}p-c" cx="${r_cx}" cy="${r_cy}" r="0" fill="#fff" stroke="${color}" stroke-width="3"/><g id="winding-${p}p-x" style="opacity:0;" stroke="${color}" stroke-width="2" stroke-linecap="round"><line x1="${r_cx-4}" y1="${r_cy-4}" x2="${r_cx+4}" y2="${r_cy+4}"/><line x1="${r_cx-4}" y1="${r_cy+4}" x2="${r_cx+4}" y2="${r_cy-4}"/></g><g id="winding-${p}p-dot" style="opacity:0;"><circle cx="${r_cx}" cy="${r_cy}" r="3" fill="${color}"/></g></g>`; }).join('')}</g>
+        <g id="rotor" opacity="0.7"><rect x="-15" y="-${statorRadius * 0.6}" width="30" height="${statorRadius * 1.2}" rx="6" fill="var(--color-rotor-s)" /><rect x="-15" y="-${statorRadius * 0.6}" width="30" height="${statorRadius * 0.6}" rx="6" fill="var(--color-rotor-n)" /><text x="0" y="-${statorRadius * 0.3}" text-anchor="middle" fill="white" font-size="18">N</text><text x="0" y="${statorRadius * 0.3}" text-anchor="middle" fill="white" font-size="18">S</text></g>
+        <g id="vectors" stroke-linecap="round"><line id="vector-a" stroke="var(--color-a)" x1="0" y1="0" x2="0" y2="0" marker-end="url(#arrow-a)" /><line id="vector-b" stroke="var(--color-b)" x1="0" y1="0" x2="0" y2="0" marker-end="url(#arrow-b)" /><line id="vector-c" stroke="var(--color-c)" x1="0" y1="0" x2="0" y2="0" marker-end="url(#arrow-c)" /><line id="vector-sum" class="vector-sum" x1="0" y1="0" x2="0" y2="0" marker-end="url(#arrow-sum)" /></g>
+        <g class="winding-label">${['a', 'b', 'c'].map((p, i) => { const angle = i * 2 * Math.PI / 3; const endAngle = angle + Math.PI; const labels = ['A', 'B', 'C']; const color = `var(--color-${p})`; return `<text x="${labelRadius * Math.cos(angle)}" y="${labelRadius * Math.sin(angle)}" text-anchor="middle" dominant-baseline="middle" fill="${color}">${labels[i]}</text><text x="${labelRadius * Math.cos(endAngle)}" y="${labelRadius * Math.sin(endAngle)}" text-anchor="middle" dominant-baseline="middle" fill="${color}">${labels[i]}'</text>`; }).join('')}</g>`;
+    const phases = ['a', 'b', 'c'];
+    const windingElements = {};
+    phases.forEach(p => { windingElements[p] = { c: document.getElementById(`winding-${p}-c`), l: document.getElementById(`winding-${p}-l`), r: document.getElementById(`winding-${p}-r`), x: document.getElementById(`winding-${p}-x`), dot: document.getElementById(`winding-${p}-dot`) }; windingElements[`${p}p`] = { c: document.getElementById(`winding-${p}p-c`), l: document.getElementById(`winding-${p}p-l`), r: document.getElementById(`winding-${p}p-r`), x: document.getElementById(`winding-${p}p-x`), dot: document.getElementById(`winding-${p}p-dot`) }; });
+    const vectorA = document.getElementById('vector-a'); const vectorB = document.getElementById('vector-b');
+    const vectorC = document.getElementById('vector-c'); const vectorSum = document.getElementById('vector-sum');
+    const rotor = document.getElementById('rotor');
+
+    // --- Graph SVG Setup ---
+    const graphWidth = 400, graphHeight = 400; const graphCenterY = graphHeight / 2;
+    const graphAmplitude = graphHeight * 0.4; const cursorX = graphWidth * 0.2;
+    graphSvg.setAttribute('viewBox', `0 0 ${graphWidth} ${graphHeight}`);
+    graphSvg.innerHTML = `<path id="path-a" fill="none" stroke="var(--color-a)" stroke-width="2"/><path id="path-b" fill="none" stroke="var(--color-b)" stroke-width="2"/><path id="path-c" fill="none" stroke="var(--color-c)" stroke-width="2"/><line class="axis" x1="0" y1="${graphCenterY}" x2="${graphWidth}" y2="${graphCenterY}" /><line id="time-cursor" class="time-cursor" x1="${cursorX}" y1="0" x2="${cursorX}" y2="${graphHeight}" />`;
+    const pathA = document.getElementById('path-a'); const pathB = document.getElementById('path-b');
+    const pathC = document.getElementById('path-c');
+
+    // NEW: Central function to redraw everything based on current state.
+    // This avoids code duplication and helps update visuals when paused.
+    function updateAllVisuals() {
+        const phaseShiftB = isReversed ? (4 * Math.PI / 3) : (2 * Math.PI / 3);
+        const phaseShiftC = isReversed ? (2 * Math.PI / 3) : (4 * Math.PI / 3);
+
+        const valA = Math.sin(time);
+        const valB = Math.sin(time + phaseShiftB);
+        const valC = Math.sin(time + phaseShiftC);
+        
+        updateSineWavePaths(time);
+        updateMotorDiagram(valA, valB, valC);
+    }
+
+    // --- Main Animation Loop ---
+    function animate() {
+        if (isPaused) { animationFrameId = null; return; }
+        const frequency = parseFloat(speedSlider.value);
+        time += 0.05 * frequency;
+        
+        updateAllVisuals(); // MODIFIED: Call the central update function
+        
+        animationFrameId = requestAnimationFrame(animate);
+    }
+    
+    function updateMotorDiagram(va, vb, vc) {
+        // This function remains unchanged
+        voltageTooltip.innerHTML = `VA: <span class="v-a">${va.toFixed(3)}</span> VB: <span class="v-b">${vb.toFixed(3)}</span> VC: <span class="v-c">${vc.toFixed(3)}</span>`;
+        const maxRadius = 9; const sideRatio = 0.65;
+        const voltages = { a: va, b: vb, c: vc };
+        phases.forEach(p => { const v = voltages[p]; const abs_v = Math.abs(v); const centerR = maxRadius * abs_v; const sideR = centerR * sideRatio; [p, `${p}p`].forEach(prefix => { windingElements[prefix].c.setAttribute('r', centerR); windingElements[prefix].l.setAttribute('r', sideR); windingElements[prefix].r.setAttribute('r', sideR); }); const primary = windingElements[p]; const secondary = windingElements[`${p}p`]; if (v > 0.01) { primary.x.style.opacity = abs_v; primary.dot.style.opacity = 0; secondary.x.style.opacity = 0; secondary.dot.style.opacity = abs_v; } else if (v < -0.01) { primary.x.style.opacity = 0; primary.dot.style.opacity = abs_v; secondary.x.style.opacity = abs_v; secondary.dot.style.opacity = 0; } else { primary.x.style.opacity = 0; primary.dot.style.opacity = 0; secondary.x.style.opacity = 0; secondary.dot.style.opacity = 0; } });
+        const angleA = 0, angleB = 2 * Math.PI / 3, angleC = 4 * Math.PI / 3;
+        const ax = vectorMaxMag * va * Math.cos(angleA); const ay = vectorMaxMag * va * Math.sin(angleA);
+        const bx = vectorMaxMag * vb * Math.cos(angleB); const by = vectorMaxMag * vb * Math.sin(angleB);
+        const cx = vectorMaxMag * vc * Math.cos(angleC); const cy = vectorMaxMag * vc * Math.sin(angleC);
+        vectorA.setAttribute('x2', ax); vectorA.setAttribute('y2', ay); vectorB.setAttribute('x2', bx); vectorB.setAttribute('y2', by); vectorC.setAttribute('x2', cx); vectorC.setAttribute('y2', cy);
+        vectorA.setAttribute('stroke-width', 1.5 + Math.abs(va) * 4); vectorB.setAttribute('stroke-width', 1.5 + Math.abs(vb) * 4); vectorC.setAttribute('stroke-width', 1.5 + Math.abs(vc) * 4);
+        const sumX = ax + bx + cx; const sumY = ay + by + cy;
+        vectorSum.setAttribute('x2', sumX); vectorSum.setAttribute('y2', sumY);
+        const rmfMagnitude = Math.sqrt(sumX * sumX + sumY * sumY) / vectorMaxMag;
+        const rmfAngleRad = Math.atan2(sumY, sumX);
+        let rmfAngleDeg = rmfAngleRad * (180 / Math.PI);
+        if (rmfAngleDeg < 0) { rmfAngleDeg += 360; }
+        rmfDataTooltip.innerHTML = `RMF Mag: <span class="v-rmf">${rmfMagnitude.toFixed(1)}</span> &nbsp;&nbsp;|&nbsp;&nbsp; Angle: <span class="v-rmf">${rmfAngleDeg.toFixed(1)}&deg;</span>`;
+        const rotorAngleDeg = rmfAngleRad * (180 / Math.PI) - 90;
+        rotor.setAttribute('transform', `rotate(${rotorAngleDeg})`);
+    }
+
+    function updateSineWavePaths(currentTime) {
+        const phaseShiftB = isReversed ? (4 * Math.PI / 3) : (2 * Math.PI / 3);
+        const phaseShiftC = isReversed ? (2 * Math.PI / 3) : (4 * Math.PI / 3);
+        
+        // MODIFIED: Calculate the pixel-to-angle factor dynamically
+        const numCycles = parseFloat(cyclesSlider.value);
+        const pixelToAngleFactor = (numCycles * 2 * Math.PI) / graphWidth;
+
+        let d_a = '', d_b = '', d_c = '';
+        for (let x = 0; x <= graphWidth; x++) {
+            // MODIFIED: Use the new dynamic factor instead of the hardcoded 0.05
+            const angle = currentTime - (cursorX - x) * pixelToAngleFactor;
+            const yA = graphCenterY - graphAmplitude * Math.sin(angle);
+            const yB = graphCenterY - graphAmplitude * Math.sin(angle + phaseShiftB);
+            const yC = graphCenterY - graphAmplitude * Math.sin(angle + phaseShiftC);
+            d_a += (x === 0 ? 'M' : 'L') + ` ${x} ${yA}`;
+            d_b += (x === 0 ? 'M' : 'L') + ` ${x} ${yB}`;
+            d_c += (x === 0 ? 'M' : 'L') + ` ${x} ${yC}`;
+        }
+        pathA.setAttribute('d', d_a); pathB.setAttribute('d', d_b); pathC.setAttribute('d', d_c);
+    }
+
+    // --- Event Listeners and Initial State ---
+    speedSlider.addEventListener('input', () => { speedValue.textContent = parseFloat(speedSlider.value).toFixed(1); });
+    
+    // NEW: Event listener for the cycles slider
+    cyclesSlider.addEventListener('input', () => {
+        cyclesValue.textContent = parseFloat(cyclesSlider.value).toFixed(1);
+        if (isPaused) {
+            updateAllVisuals(); // Redraw the graph immediately if animation is paused
+        }
+    });
+
+    startBtn.addEventListener('click', () => { if (isPaused) { isPaused = false; if (!animationFrameId) animate(); } });
+    stopBtn.addEventListener('click', () => isPaused = true);
+    reverseBtn.addEventListener('click', () => {
+        isReversed = !isReversed;
+        reverseBtn.textContent = isReversed ? 'Forward' : 'Reverse';
+        setInitialState(); // Immediately update the display with the new direction
+    });
+    
+    function setInitialState() {
+        time = 0;
+        updateAllVisuals();
+    }
+    setInitialState();
+</script>
+</body>
+</html>
