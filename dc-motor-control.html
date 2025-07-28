@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DC Motor Control Design Walkthrough</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      :root {
+        --bg-color: #f4f7f9;
+        --card-bg-color: #ffffff;
+        --primary-text-color: #1a202c;
+        --secondary-text-color: #4a5568;
+        --accent-color: #3182ce;
+        --accent-hover-color: #2b6cb0;
+        --divider-color: #e2e8f0;
+        --input-bg-color: #edf2f7;
+        --error-color: #e53e3e;
+        --success-color: #38a169;
+        --settling-band-color: rgba(76, 175, 80, 0.2);
+        --settling-border-color: rgba(76, 175, 80, 0.5);
+      }
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial, sans-serif;
+        margin: 0;
+        background-color: var(--bg-color);
+        color: var(--primary-text-color);
+        padding: 1rem;
+      }
+      .main-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        max-width: 1400px;
+        margin: auto;
+      }
+      .sidebar-panel {
+        flex: 1;
+        min-width: 340px;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .main-panel {
+        flex: 2.5;
+        min-width: 500px;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .card {
+        background-color: var(--card-bg-color);
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 1.5rem;
+      }
+      .card h2 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        border-bottom: 1px solid var(--divider-color);
+        padding-bottom: 1rem;
+      }
+      .plot-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--divider-color);
+        margin-bottom: 1.5rem;
+      }
+      .tab-btn {
+        padding: 0.75rem 1.25rem; border: none; background-color: transparent; cursor: pointer;
+        font-size: 1rem; font-weight: 500; color: var(--secondary-text-color);
+        border-bottom: 3px solid transparent; margin-bottom: -1px; transition: color 0.2s, border-color 0.2s;
+      }
+      .tab-btn.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+      .plot-container { display: none; }
+      .plot-container.active { display: block; }
+      .metrics-display {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem; margin-top: 1.5rem; text-align: center;
+      }
+      .metric { background-color: var(--input-bg-color); padding: 0.75rem; border-radius: 6px; }
+      .metric-label { font-size: 0.85rem; color: var(--secondary-text-color); font-weight: 500; display: block; margin-bottom: 0.25rem; }
+      .metric-value { font-size: 1.25rem; font-weight: 600; color: var(--accent-color); }
+      #explanation-card p { line-height: 1.6; margin-top: 0; }
+      #explanation-card code { background-color: var(--input-bg-color); padding: 0.2em 0.4em; border-radius: 3px; font-family: "Courier New", monospace;}
+      #explanation-card .assumption-box { border-left: 3px solid var(--accent-color); padding: 1rem; margin-top: 1.5rem; background-color: #f4f7f9; border-radius: 0 4px 4px 0; }
+      .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;}
+      .form-group { margin-bottom: 1rem; }
+      .form-group:last-child { margin-bottom: 0; }
+      .form-group label { display: block; font-weight: 500; margin-bottom: 0.5rem; color: var(--secondary-text-color); font-size: 0.9rem; }
+      .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--divider-color); border-radius: 4px; background-color: var(--input-bg-color); box-sizing: border-box; font-size: 1rem; }
+      .button-container { display: flex; gap: 1rem; margin-top: 1rem; }
+      .plot-button, .back-button, .proceed-button {
+        flex: 1; padding: 0.8rem; font-size: 1.1rem; font-weight: 700;
+        border-radius: 4px; cursor: pointer; transition: background-color 0.2s, opacity 0.2s;
+        border: none;
+      }
+      .plot-button { color: #fff; background-color: var(--accent-color); }
+      .plot-button:hover:not(:disabled) { background-color: var(--accent-hover-color); }
+      .back-button { color: var(--primary-text-color); background-color: var(--input-bg-color); border: 1px solid var(--divider-color); }
+      .back-button:hover { background-color: var(--divider-color); }
+      .proceed-button { color: #fff; background-color: var(--success-color); }
+      .proceed-button:hover:not(:disabled) { background-color: #2f855a; }
+      .plot-button:disabled, .proceed-button:disabled { background-color: #a0aec0; cursor: not-allowed; opacity: 0.7; }
+      .hidden { display: none; }
+      .tf-display { background: #f7fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 6px; margin: 1rem 0; font-family: "Courier New", monospace; text-align: center; }
+      .tf-symbolic, .tf-numeric { display: block; margin-bottom: 0.5rem; }
+      .tf-numeric .frac { display: inline-block; vertical-align: middle; margin: 0 0.2em; text-align: center; }
+      .tf-numeric .frac > span { display: block; padding: 0.2em; }
+      .tf-numeric .frac span.symbol { border-top: 2px solid var(--primary-text-color); }
+      .slider-group { display: flex; align-items: center; gap: 0.75rem; }
+      .slider-group input[type="range"] { flex-grow: 1; width: 100%; margin: 0; padding: 0; }
+      .slider-group input[type="number"] { width: 80px; text-align: center; padding: 0.5rem; }
+      /* Modal Styles */
+      .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex; justify-content: center; align-items: center;
+        z-index: 1000; transition: opacity 0.3s ease;
+      }
+      .modal-overlay.hidden { display: none; }
+      .modal {
+        background: var(--card-bg-color); border-radius: 8px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+        width: 90%; max-width: 550px;
+        transform: translateY(-20px); transition: transform 0.3s ease, opacity 0.3s ease;
+        opacity: 1;
+      }
+      .modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 1rem 1.5rem; border-bottom: 1px solid var(--divider-color);
+      }
+      .modal-header h3 { margin: 0; font-size: 1.25rem; }
+      .modal-close-btn {
+        background: none; border: none; font-size: 2rem;
+        line-height: 1; cursor: pointer; color: var(--secondary-text-color);
+      }
+      .modal-body { padding: 1.5rem; line-height: 1.6; }
+      .modal-body code { background-color: var(--input-bg-color); padding: 0.2em 0.4em; border-radius: 3px; font-family: "Courier New", monospace;}
+      .modal-footer {
+        display: flex; justify-content: flex-end; gap: 1rem;
+        padding: 1rem 1.5rem; background-color: var(--bg-color);
+        border-top: 1px solid var(--divider-color); border-radius: 0 0 8px 8px;
+      }
+      .modal-button {
+        padding: 0.6rem 1.2rem; font-size: 1rem; font-weight: 600;
+        border-radius: 4px; cursor: pointer; transition: background-color 0.2s;
+        border: 1px solid transparent;
+      }
+      .modal-button.primary { color: #fff; background-color: var(--accent-color); }
+      .modal-button.primary:hover { background-color: var(--accent-hover-color); }
+      .modal-button.secondary { color: var(--primary-text-color); background-color: var(--input-bg-color); border-color: var(--divider-color); }
+      .modal-button.secondary:hover { background-color: var(--divider-color); }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="sidebar-panel">
+        <div id="sim-settings-card" class="card">
+            <h2>Simulation Settings</h2>
+            <div class="form-grid">
+                <div class="form-group"><label>Simulation Time (s)</label><input type="number" class="sim-param" id="sim-time" value="5" step="0.1" min="0.1"></div>
+                <div class="form-group"><label>Time Step (dt)</label><input type="number" class="sim-param" id="sim-dt" value="0.001" step="0.005" min="0.0001"></div>
+            </div>
+        </div>
+
+        <div id="step-1-controls" class="card control-card">
+          <h2>Step 1: Motor Setup</h2>
+          <div id="motor-param-grid" class="form-grid motor-param-grid">
+              <div class="form-group"><label>Ra [Ω]</label><input type="number" class="motor-param" id="motor-ra" value="1"></div>
+              <div class="form-group"><label>La [H]</label><input type="number" class="motor-param" id="motor-la" value="0.005"></div>
+              <div class="form-group"><label>Kt [Nm/A]</label><input type="number" class="motor-param" id="motor-kt" value="0.35"></div>
+              <div class="form-group"><label>Ke [Vs/rad]</label><input type="number" class="motor-param" id="motor-ke" value="0.35"></div>
+              <div class="form-group"><label>Inertia (J) [kg·m²]</label><input type="number" class="motor-param" id="motor-j" value="0.01"></div>
+              <div class="form-group"><label>Damping (b) [Nms/rad]</label><input type="number" class="motor-param" id="motor-b" value="0.002"></div>
+          </div>
+          <div class="form-group"><label title="Used as the step input in Step 1 and the saturation limit in Step 2.">Supply Voltage (V)</label><input type="number" class="motor-param step2-param" id="motor-voltage" value="12"></div>
+          <button id="plot-open-loop-btn" class="plot-button" style="width: 100%;">Plot Open Loop</button>
+        </div>
+
+        <div id="step-2-controls" class="card control-card hidden">
+          <h2>Step 2: Current Controller</h2>
+          <div class="form-grid">
+              <div class="form-group"><label>Controller Type</label><select id="current-ctype" class="step2-param"><option value="P">P</option><option value="PI">PI</option></select></div>
+              <div class="form-group"><label>Current Setpoint (A)</label><input type="number" id="current-setpoint" class="step2-param" value="1.0"></div>
+          </div>
+          <div id="current-kp-group">
+            <label>Proportional Gain (Kp_i)</label>
+            <div class="slider-group"><input type="range" id="kp_i-slider" min="0" max="100" step="0.1" value="0.5"><input type="number" id="kp_i" class="step2-param" step="0.1" value="0.5"></div>
+          </div>
+          <div id="current-ki-group" style="margin-top:1rem;">
+            <label>Integral Gain (Ki_i)</label>
+            <div class="slider-group"><input type="range" id="ki_i-slider" min="0" max="100" step="0.1" value="0"><input type="number" id="ki_i" class="step2-param" step="0.1" value="0"></div>
+          </div>
+          <button id="plot-step-2" class="plot-button" style="width:100%; margin-top: 1.5rem;">Plot Current Loop</button>
+        </div>
+
+        <div id="step-3-controls" class="card control-card hidden">
+          <h2>Step 3: Speed Controller</h2>
+          <div class="form-grid">
+              <div class="form-group"><label>Controller Type</label><select id="speed-ctype" class="step3-param"><option value="P">P</option><option value="PI" selected>PI</option><option value="PID">PID</option></select></div>
+              <div class="form-group"><label>Speed Setpoint (RPM)</label><input type="number" id="speed-setpoint" class="step3-param" value="150"></div>
+          </div>
+          <div id="speed-kp-group">
+            <label>Proportional Gain (Kp_s)</label>
+            <div class="slider-group"><input type="range" id="kp_s-slider" min="0" max="100" step="0.1" value="0.5"><input type="number" id="kp_s" class="step3-param" step="0.1" value="0.5"></div>
+          </div>
+           <div id="speed-ki-group" style="margin-top:1rem;">
+            <label>Integral Gain (Ki_s)</label>
+            <div class="slider-group"><input type="range" id="ki_s-slider" min="0" max="100" step="0.1" value="0"><input type="number" id="ki_s" class="step3-param" step="0.1" value="0"></div>
+          </div>
+           <div id="speed-kd-group" style="margin-top:1rem;">
+            <label>Derivative Gain (Kd_s)</label>
+            <div class="slider-group"><input type="range" id="kd_s-slider" min="0" max="10" step="0.01" value="0"><input type="number" id="kd_s" class="step3-param" step="0.01" value="0"></div>
+          </div>
+          <button id="plot-step-3" class="plot-button" style="width:100%; margin-top: 1.5rem;">Plot Speed Control Response</button>
+        </div>
+        
+        <div id="step-load-controls" class="card control-card hidden">
+            <h2>Load Torque Disturbance</h2>
+             <div class="form-grid">
+                 <div class="form-group"><label>Load Torque (TL) [Nm]</label><input type="number" class="load-param" id="load-torque" value="0.1" step="0.1"></div>
+                 <div class="form-group"><label>Load Torque Delay (s)</label><input type="number" class="load-param" id="load-torque-delay" value="2" min="0" step="0.5"></div>
+            </div>
+            <button id="apply-load-btn" class="plot-button" style="width:100%; background-color: #dd6b20;" disabled>Apply Load Torque</button>
+        </div>
+
+        <div id="navigation-card" class="card">
+            <div class="button-container">
+                <button id="back-btn" class="back-button hidden">Back</button>
+                <button id="proceed-btn" class="proceed-button" disabled>Proceed</button>
+            </div>
+        </div>
+      </div>
+      
+      <div class="main-panel">
+        <div class="card">
+          <h2 id="main-title">Welcome!</h2>
+          <div class="plot-tabs">
+              <button class="tab-btn active" data-target="step-response-container">Step Response</button>
+              <button class="tab-btn" data-target="bode-plot-container">Bode Plot</button>
+          </div>
+          <div id="step-response-container" class="plot-container active">
+              <canvas id="response-chart"></canvas>
+              <div id="effort-chart-container" class="hidden">
+                  <canvas id="effort-chart" style="margin-top: 1.5rem;"></canvas>
+              </div>
+              <div class="metrics-display" id="step-metrics-display"></div>
+          </div>
+          <div id="bode-plot-container" class="plot-container">
+              <canvas id="magnitude-chart"></canvas>
+              <canvas id="phase-chart" style="margin-top: 1.5rem"></canvas>
+              <div class="metrics-display" id="bode-metrics-display"></div>
+          </div>
+        </div>
+        <div id="explanation-card" class="card">
+            <div id="explanation-content">
+                <p>Start by defining the motor's physical parameters in the sidebar and click "Plot Open Loop" to see its natural response.</p>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div id="modal" class="modal">
+        <div class="modal-header">
+          <h3 id="modal-title">Modal Title</h3>
+          <button id="modal-close-btn" class="modal-close-btn">&times;</button>
+        </div>
+        <div id="modal-body" class="modal-body">
+          <p>Modal content goes here.</p>
+        </div>
+        <div id="modal-footer" class="modal-footer">
+          <!-- Buttons will be injected here by JS -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // --- STATE & CONSTANTS ---
+        let state = { step: 1, baseOLResponse: null, params: {} };
+        const RPM_TO_RADS = 2 * Math.PI / 60;
+        const RADS_TO_RPM = 60 / (2 * Math.PI);
+        const MAX_CALC_POINTS = 100000;
+        const MAX_PLOT_POINTS = 1000;
+
+        // --- UI SELECTORS ---
+        const ui = {
+            mainTitle: document.getElementById('main-title'),
+            controls: { 1: document.getElementById('step-1-controls'), 1.5: document.getElementById('step-load-controls'), 2: document.getElementById('step-2-controls'), 3: document.getElementById('step-3-controls') },
+            buttons: { 
+                plotOL: document.getElementById('plot-open-loop-btn'), applyLoad: document.getElementById('apply-load-btn'),
+                plot2: document.getElementById('plot-step-2'), plot3: document.getElementById('plot-step-3'), 
+                proceed: document.getElementById('proceed-btn'), back: document.getElementById('back-btn')
+            },
+            inputs: {
+                Ra: document.getElementById('motor-ra'), La: document.getElementById('motor-la'),
+                Kt: document.getElementById('motor-kt'), Ke: document.getElementById('motor-ke'),
+                J: document.getElementById('motor-j'), b: document.getElementById('motor-b'),
+                voltage: document.getElementById('motor-voltage'), TL: document.getElementById('load-torque'),
+                load_torque_delay: document.getElementById('load-torque-delay'),
+                simTime: document.getElementById('sim-time'), simDt: document.getElementById('sim-dt'),
+                current_ctype: document.getElementById('current-ctype'), current_sp: document.getElementById('current-setpoint'),
+                kp_i: document.getElementById('kp_i'), ki_i: document.getElementById('ki_i'),
+                speed_ctype: document.getElementById('speed-ctype'), speed_sp: document.getElementById('speed-setpoint'),
+                kp_s: document.getElementById('kp_s'), ki_s: document.getElementById('ki_s'), kd_s: document.getElementById('kd_s'),
+                motorParams: document.querySelectorAll('.motor-param'), loadParams: document.querySelectorAll('.load-param'),
+                simParams: document.querySelectorAll('.sim-param'),
+                step2Params: document.querySelectorAll('.step2-param'), step3Params: document.querySelectorAll('.step3-param'),
+            },
+            gainGroups: {
+                current_kp: document.getElementById('current-kp-group'), current_ki: document.getElementById('current-ki-group'),
+                speed_kp: document.getElementById('speed-kp-group'), speed_ki: document.getElementById('speed-ki-group'), speed_kd: document.getElementById('speed-kd-group')
+            },
+            displays: { 
+                explanationContent: document.getElementById('explanation-content'),
+                stepMetrics: document.getElementById('step-metrics-display'), bodeMetrics: document.getElementById('bode-metrics-display'),
+                effortChartContainer: document.getElementById('effort-chart-container'),
+                motorParamGrid: document.getElementById('motor-param-grid')
+            },
+            tabs: document.querySelectorAll('.tab-btn'), plotContainers: document.querySelectorAll('.plot-container'),
+            modal: {
+                overlay: document.getElementById('modal-overlay'),
+                title: document.getElementById('modal-title'),
+                body: document.getElementById('modal-body'),
+                footer: document.getElementById('modal-footer'),
+                closeBtn: document.getElementById('modal-close-btn'),
+            }
+        };
+        
+        const charts = {}; 
+        charts.response = new Chart(document.getElementById('response-chart').getContext('2d'), { type: 'line', data: { datasets: [ { label: "±2% Settling Band", data: [], borderColor: 'rgba(76, 175, 80, 0.5)', backgroundColor: 'rgba(76, 175, 80, 0.2)', borderWidth: 1, fill: 'origin', pointRadius: 0, order: 3 }, { label: "Response", data: [], borderColor: 'var(--primary-text-color)', borderWidth: 2.5, pointRadius: 0, tension: 0.1, order: 2 }, { label: "Setpoint", data: [], borderColor: 'var(--secondary-text-color)', borderWidth: 2, pointRadius: 0, borderDash: [3, 3], order: 1 }, { label: "Overshoot", data: [], type: 'scatter', borderColor: 'red', backgroundColor: "rgba(255, 50, 0, 0.2)", pointRadius: 5, pointHoverRadius: 7, order: 0 } ]}, options: { responsive: true, scales: { x: { type: 'linear', title: { display: true, text: 'Time (s)' }, beginAtZero: true }, y: { type: 'linear', title: { display: true, text: 'Output' } } }, plugins: { legend: { display: true, position: 'top', labels: { usePointStyle: true, pointStyle: "line" } }, title: { display: true, text: "System Response", font: {size: 16} }, tooltip: { mode: 'index', intersect: false } }, animation: { duration: 0 } } });
+        const linearChartOptions = (yLabel, title) => ({ responsive: true, scales: { x: { type: 'linear', title: { display: true, text: 'Time (s)' }, beginAtZero: true }, y: { title: { display: true, text: yLabel }, beginAtZero: false } }, plugins: { legend: { display: false }, title: { display: true, text: title, font: { size: 16 } }, tooltip: { mode: 'index', intersect: false } }, animation: { duration: 0 } });
+        const bodeOptions = (yLabel, title) => ({ responsive: true, scales: { x: { type: 'logarithmic', title: { display: true, text: 'Frequency (rad/s)' }, ticks: { callback: (val) => Math.log10(val) % 1 === 0 ? formatWithSIPrefix(val) : "" } }, y: { title: { display: true, text: yLabel } } }, plugins: { legend: { display: false }, title: { display: true, text: title, font: { size: 16 } }, tooltip: { mode: 'nearest', intersect: false } }, animation: { duration: 0 } });
+        charts.effort = new Chart(document.getElementById('effort-chart').getContext('2d'), { type: 'line', data: { datasets: [{ label: "Voltage", data: [], borderColor: 'rgba(237, 137, 54, 0.8)', borderWidth: 2, pointRadius: 0, tension: 0.1 }] }, options: linearChartOptions('Voltage (V)', 'Controller Effort') });
+        charts.magnitude = new Chart(document.getElementById('magnitude-chart').getContext('2d'), { type: 'line', data: { datasets: [ {label: "Magnitude", data: [], borderWidth: 2, pointRadius: 0}, {label: "Gain Margin Line", data: []} ] }, options: bodeOptions('Magnitude (dB)', 'Bode Plot: Magnitude') });
+        charts.phase = new Chart(document.getElementById('phase-chart').getContext('2d'), { type: 'line', data: { datasets: [ {label: "Phase", data: [], borderWidth: 2, pointRadius: 0}, {label: "Phase Margin Line", data: []} ] }, options: bodeOptions('Phase (degrees)', 'Bode Plot: Phase') });
+        
+        // --- MODAL & HELPERS ---
+        function hideModal() { ui.modal.overlay.classList.add('hidden'); }
+        function showModal(title, bodyHtml, buttons = []) { ui.modal.title.textContent = title; ui.modal.body.innerHTML = bodyHtml; ui.modal.footer.innerHTML = ''; if (buttons.length === 0) { buttons.push({ text: 'Close', class: 'primary', callback: hideModal }); } buttons.forEach(btnInfo => { const button = document.createElement('button'); button.textContent = btnInfo.text; button.className = `modal-button ${btnInfo.class || 'secondary'}`; button.onclick = () => { hideModal(); if (btnInfo.callback) btnInfo.callback(); }; ui.modal.footer.appendChild(button); }); ui.modal.overlay.classList.remove('hidden'); }
+        const poly = { add: (p1, p2) => { const l1 = p1.length, l2 = p2.length, mL = Math.max(l1, l2), r = new Array(mL).fill(0); for (let i = 0; i < mL; i++) { r[mL - 1 - i] = (l1 > i ? p1[l1 - 1 - i] : 0) + (l2 > i ? p2[l2 - 1 - i] : 0); } return r; }, multiply: (p1, p2) => { if (p1.length === 0 || p2.length === 0) return []; const r = new Array(p1.length + p2.length - 1).fill(0); for (let i = 0; i < p1.length; i++) for (let j = 0; j < p2.length; j++) r[i + j] += p1[i] * p2[j]; return r; } };
+        class Complex { constructor(re = 0, im = 0) { this.re = re; this.im = im; } add(o) { return new Complex(this.re + o.re, this.im + o.im); } multiply(o) { return new Complex(this.re * o.re - this.im * o.im, this.re * o.im + this.im * o.re); } divide(o) { const d = o.re * o.re + o.im * o.im; return d === 0 ? new Complex(Infinity, Infinity) : new Complex((this.re * o.re + this.im * o.im) / d, (this.im * o.re - this.re * o.im) / d); } magnitude() { return Math.sqrt(this.re * this.re + this.im * this.im); } phase() { return Math.atan2(this.im, this.re); } }
+        const evaluatePoly = (p, s) => { let r = new Complex(0, 0); for (let i = 0; i < p.length; i++) r = r.multiply(s).add(new Complex(p[i], 0)); return r; };
+        const logspace = (start, stop, n) => { const r = [], d = (stop - start) / (n - 1); for (let i = 0; i < n; i++) r.push(Math.pow(10, start + i * d)); return r; };
+        function formatWithSIPrefix(val) { if (val === 0) return "0"; const tiers = [{ p: 1e3, s: "k" }, { p: 1, s: "" }, { p: 1e-3, s: "m" }]; const tier = tiers.find(t => Math.abs(val) >= t.p); if (tier) { const scaled = val / tier.p; return (scaled % 1 === 0 ? scaled.toString() : scaled.toPrecision(3)) + tier.s; } return val.toExponential(0); }
+        function formatPolyStr(poly, sVar = 's') { if (!poly || poly.length === 0) return '0'; let str = ''; const n = poly.length - 1; for (let i = 0; i <= n; i++) { const coeff = poly[i]; if (Math.abs(coeff) < 1e-9) continue; const power = n - i; if (str.length > 0) { str += coeff > 0 ? ' + ' : ' - '; } else if (coeff < 0) { str += '-'; } const absCoeff = Math.abs(coeff); const formattedCoeff = absCoeff.toPrecision(3).replace(/\.0+$/, "").replace(/(\.\d*?[1-9])0+$/, "$1"); if (formattedCoeff !== '1' || power === 0) { str += formattedCoeff; } if (power > 0) { str += sVar; if (power > 1) { str += `<sup>${power}</sup>`; } } } return str || '0';}
+        function formatTF(num, den, sVar = 's') { return `<div class="frac"><span>${formatPolyStr(num, sVar)}</span><span class="symbol"></span><span>${formatPolyStr(den, sVar)}</span></div>`; }
+        function tfToSS(num, den) { const norm = den[0] || 1; den = den.map(d => d / norm); num = num.map(n => n / norm); while (num.length < den.length) num.unshift(0); const n = den.length - 1; if (n < 1) return null; const A = Array(n).fill(0).map(() => Array(n).fill(0)), B = Array(n).fill(0).map(() => [0]), C = [Array(n).fill(0)]; for (let i = 0; i < n - 1; i++) A[i][i + 1] = 1; for (let i = 0; i < n; i++) A[n - 1][i] = -den[n - i]; B[n - 1][0] = 1; for (let i = 0; i < n; i++) C[0][i] = num[n - i] - num[0] * den[n - i]; return { A, B, C, D: [num[0]] }; }
+        function simulateSystem(ss, duration, dt, input) { if (!ss || dt <= 0) return { time: [], output: [] }; const n = ss.A.length; let x = Array(n).fill(0); const time = [], output = []; const getDerivatives = (state, u) => { const x_dot = Array(n).fill(0); for (let i = 0; i < n; i++) { for (let j = 0; j < n; j++) x_dot[i] += ss.A[i][j] * state[j]; x_dot[i] += ss.B[i][0] * u; } return x_dot; }; for (let t = 0; t <= duration; t += dt) { let y = ss.D[0] * input; for (let i = 0; i < n; i++) y += ss.C[0][i] * x[i]; time.push(t); output.push(y); const k1 = getDerivatives(x, input); const x_k2 = x.map((v, i) => v + k1[i] * dt); const k2 = getDerivatives(x_k2, input); x = x.map((v, i) => v + (k1[i] + k2[i]) / 2 * dt); } return { time, output }; }
+        function calculateBodeData(num, den) { const freqs = logspace(-2, 4, 400); const mags = [], phases = []; let lastPhase = 0; freqs.forEach((w, idx) => { const s = new Complex(0, w); const G = evaluatePoly(num, s).divide(evaluatePoly(den, s)); mags.push({ x: w, y: 20 * Math.log10(G.magnitude()) }); let phase = (G.phase() * 180) / Math.PI; if (idx > 0) { while (lastPhase - phase > 180) phase += 360; while (phase - lastPhase > 180) phase -= 360; } phases.push({ x: w, y: phase }); lastPhase = phase; }); return { mags, phases }; }
+        function analyzeStepResponse(time, data, targetValue, simulatedFinalValue) { if (data.length < 2 || targetValue === 0) return { overshoot: "--", settlingTime: "--", peakPoint: [], bands: [] }; let peakValue = -Infinity, peakTime = 0; data.forEach((d, i) => { if (d > peakValue) { peakValue = d; peakTime = time[i]; } }); const overshoot = ((peakValue - simulatedFinalValue) / simulatedFinalValue) * 100; let settlingTime = "--"; const upperBand = targetValue * 1.02, lowerBand = targetValue * 0.98; for (let i = data.length - 1; i >= 0; i--) { if (data[i] > upperBand || data[i] < lowerBand) { settlingTime = i < data.length - 1 ? time[i + 1].toFixed(2) + "s" : `> ${time[time.length-1].toFixed(1)}s`; break; } if (i === 0) settlingTime = time[0].toFixed(2) + "s"; } return { overshoot: (overshoot > 0.1 ? overshoot.toFixed(1) : "0") + "%", settlingTime, peakPoint: overshoot > 0.1 ? [{ x: peakTime, y: peakValue }] : [], bands: [{ x: time[0], y: lowerBand }, { x: time[time.length - 1], y: lowerBand }, { x: time[time.length - 1], y: upperBand }, { x: time[0], y: upperBand }] }; }
+        function analyzeBode(ol_num, ol_den) { const { mags: ol_mags, phases: ol_phases } = calculateBodeData(ol_num, ol_den); let gm = Infinity, pm = Infinity, gmFreq = null, pmFreq = null; for (let i = 0; i < ol_mags.length - 1; i++) { if (ol_mags[i].y >= 0 && ol_mags[i + 1].y < 0) { pmFreq = ol_mags[i].x; pm = 180 + (ol_phases[i].y || -180); break; } } for (let i = 0; i < ol_phases.length - 1; i++) { if (ol_phases[i].y >= -180 && ol_phases[i + 1].y < -180) { gmFreq = ol_phases[i].x; gm = -(ol_mags[i].y || 0); break; } } const cl_num = ol_num; const cl_den = poly.add(ol_den, ol_num); const { mags: cl_mags } = calculateBodeData(cl_num, cl_den); let bandwidthRad = null; const dcGain = cl_mags.length > 0 ? cl_mags[0].y : -Infinity; const bwDb = dcGain - 3; for (let i = 0; i < cl_mags.length; i++) { if (cl_mags[i].y <= bwDb) { bandwidthRad = cl_mags[i].x; break; } } const bandwidthHz = bandwidthRad ? formatWithSIPrefix(bandwidthRad / (2 * Math.PI)) + 'Hz' : "N/A"; return { gm: isFinite(gm) ? gm.toFixed(2) + " dB" : "Inf", pm: isFinite(pm) ? pm.toFixed(2) + "°" : "Inf", bandwidth: bandwidthHz, gmLine: gmFreq ? [{ x: gmFreq, y: ol_mags.find(m => m.x >= gmFreq).y }, { x: gmFreq, y: 0 }] : [], pmLine: pmFreq ? [{ x: pmFreq, y: ol_phases.find(p => p.x >= pmFreq).y }, { x: pmFreq, y: -180 }] : [] }; }
+        function checkStability(output, setpoint) { const finalVal = output[output.length - 1]; const threshold = (Math.abs(setpoint) + 1) * 1e4; if (isNaN(finalVal) || !isFinite(finalVal) || Math.abs(finalVal) > threshold) { return `<p style="color:var(--error-color)"><b>Divergence Detected:</b> The system response is unstable with the current gains. Please reduce gain values.</p>`; } return `<p style="color:var(--success-color)"><b>System Stable:</b> The simulation appears to be stable.</p>`; }
+
+        // --- CORE FUNCTIONS ---
+        function getParams() { Object.keys(ui.inputs).forEach(key => { if(ui.inputs[key] && typeof ui.inputs[key].value !== 'undefined') { const val = parseFloat(ui.inputs[key].value); state.params[key] = isNaN(val) ? 0 : val; }}); return state.params; }
+        
+        function enforceCalculationLimit(p) { const numPoints = p.simTime / p.simDt; if (numPoints > MAX_CALC_POINTS) { const newDt = p.simTime / MAX_CALC_POINTS; p.simDt = newDt; ui.inputs.simDt.value = newDt.toFixed(4); showModal("Performance Warning", `Calculation limit exceeded. Time Step (dt) was automatically increased to <b>${newDt.toFixed(4)}s</b> to ensure performance.`); } return p; }
+        function downsampleData(time, output, maxPoints) { if (time.length <= maxPoints) return { time_axis: time, final_output: output }; const step = Math.ceil(time.length / maxPoints); const downsampledTime = time.filter((_, i) => i % step === 0); const downsampledOutput = output.filter((_, i) => i % step === 0); return { time_axis: downsampledTime, final_output: downsampledOutput }; }
+        
+        function plot(plotData) {
+            const { time_axis, final_output, voltage_output, targetForSettling, ol_num, ol_den, plot_title, bode_title, y_label, chartLineLabel } = plotData;
+            const simulatedFinalValue = final_output.length > 0 ? final_output[final_output.length - 1] : 0;
+            const step_metrics = analyzeStepResponse(time_axis, final_output, targetForSettling, simulatedFinalValue);
+            const { gm, pm, bandwidth, gmLine, pmLine } = analyzeBode(ol_num, ol_den);
+            
+            charts.response.options.plugins.title.text = plot_title;
+            charts.response.data.datasets[0].data = step_metrics.bands;
+            charts.response.data.datasets[1].data = time_axis.map((t, i) => ({ x: t, y: final_output[i] }));
+            charts.response.data.datasets[2].data = time_axis.map(t => ({ x: t, y: targetForSettling }));
+            charts.response.data.datasets[2].label = chartLineLabel;
+            charts.response.data.datasets[3].data = step_metrics.peakPoint;
+            charts.response.options.scales.y.title.text = y_label;
+            charts.response.update();
+
+            if (voltage_output && voltage_output.length > 0) {
+                ui.displays.effortChartContainer.classList.remove('hidden');
+                charts.effort.data.datasets[0].data = time_axis.map((t, i) => ({ x: t, y: voltage_output[i] }));
+                const V_max_ui = parseFloat(ui.inputs.voltage.value) || 12;
+                charts.effort.options.scales.y.suggestedMax = V_max_ui * 1.1;
+                charts.effort.update();
+            } else {
+                ui.displays.effortChartContainer.classList.add('hidden');
+            }
+
+            charts.magnitude.options.plugins.title.text = bode_title + ": Magnitude"; charts.phase.options.plugins.title.text = bode_title + ": Phase";
+            const { mags: ol_mags, phases: ol_phases } = calculateBodeData(ol_num, ol_den);
+            charts.magnitude.data.datasets[0].data = ol_mags; charts.magnitude.data.datasets[0].borderColor = 'var(--primary-text-color)'; charts.magnitude.data.datasets[1].data = gmLine; charts.magnitude.data.datasets[1].borderColor = 'rgba(255, 25, 0, 0.5)'; charts.magnitude.data.datasets[1].borderDash = [3, 2];
+            charts.phase.data.datasets[0].data = ol_phases; charts.phase.data.datasets[0].borderColor = 'var(--primary-text-color)'; charts.phase.data.datasets[1].data = pmLine; charts.phase.data.datasets[1].borderColor = 'rgba(255, 25, 0, 0.5)'; charts.phase.data.datasets[1].borderDash = [3, 2];
+            charts.magnitude.update(); charts.phase.update();
+            ui.displays.stepMetrics.innerHTML = `<div class="metric"><span class="metric-label">Overshoot</span><span class="metric-value">${step_metrics.overshoot}</span></div><div class="metric"><span class="metric-label">Settling Time (±2%)</span><span class="metric-value">${step_metrics.settlingTime}</span></div>`;
+            ui.displays.bodeMetrics.innerHTML = `<div class="metric"><span class="metric-label">Gain Margin</span><span class="metric-value">${gm}</span></div><div class="metric"><span class="metric-label">Phase Margin</span><span class="metric-value">${pm}</span></div><div class="metric"><span class="metric-label">Bandwidth (-3dB)</span><span class="metric-value">${bandwidth}</span></div>`;
+        }
+
+        function handlePlotOpenLoop() {
+            let p = getParams(); p = enforceCalculationLimit(p);
+            const num_motor = [p.Kt], den_motor = [(p.J * p.La), (p.J * p.Ra + p.b * p.La), (p.Ra * p.b + p.Kt * p.Ke)];
+            const ss_v = tfToSS(num_motor, den_motor);
+            const { time, output } = simulateSystem(ss_v, p.simTime, p.simDt, p.voltage);
+            state.baseOLResponse = { time, output };
+            const { time_axis, final_output } = downsampleData(time, output.map(v => v * RADS_TO_RPM), MAX_PLOT_POINTS);
+            const theoretical_final_value_rads = (p.Kt * p.voltage) / (p.Ra * p.b + p.Kt * p.Ke);
+            plot({ time_axis, final_output, targetForSettling: theoretical_final_value_rads * RADS_TO_RPM, ol_num: num_motor, ol_den: den_motor, plot_title: "Open Loop Response (No Load)", bode_title: "Bode Plot (Open Loop)", y_label: 'Speed (RPM)', chartLineLabel: 'Theoretical Final Value'});
+            ui.displays.explanationContent.innerHTML = `<p>This is the motor's natural "open-loop" response to a step input equal to the full <b>Supply Voltage</b>.</p><p><b>Speed Transfer Function: &Omega;(s) / V(s)</b></p><div class="tf-display"><span class="tf-symbolic">K<sub>t</sub> / [(L<sub>a</sub>s + R<sub>a</sub>)(Js + b) + K<sub>t</sub>K<sub>e</sub>]</span><span class="tf-numeric">= ${formatTF(num_motor, den_motor)}</span></div><p>Now, you can apply a load disturbance using the controls in the sidebar.</p>`;
+            ui.buttons.plotOL.disabled = true; ui.buttons.applyLoad.disabled = false; ui.buttons.proceed.disabled = false;
+        }
+        function handleApplyLoad() {
+            if (!state.baseOLResponse) return;
+            let p = getParams(); p = enforceCalculationLimit(p);
+            const den_motor = [(p.J * p.La), (p.J * p.Ra + p.b * p.La), (p.Ra * p.b + p.Kt * p.Ke)];
+            const num_dist = [-p.La, -p.Ra];
+            const ss_d = tfToSS(num_dist, den_motor);
+            const { output: output_d } = simulateSystem(ss_d, p.simTime, p.simDt, p.TL);
+            const delay_steps = Math.round(p.load_torque_delay / p.simDt);
+            const combined_output_rpm = state.baseOLResponse.output.map((val, i) => ((val + ((i >= delay_steps) ? output_d[i - delay_steps] : 0)) * RADS_TO_RPM));
+            const { time_axis, final_output } = downsampleData(state.baseOLResponse.time, combined_output_rpm, MAX_PLOT_POINTS);
+            const ss_denominator = (p.Ra * p.b + p.Kt * p.Ke);
+            const theoretical_final_value_rads = ss_denominator !== 0 ? (p.voltage * p.Kt - p.TL * p.Ra) / ss_denominator : 0;
+            plot({ time_axis, final_output, targetForSettling: theoretical_final_value_rads * RADS_TO_RPM, ol_num: [p.Kt], ol_den: den_motor, plot_title: "Open Loop Response (With Load)", bode_title: "Bode Plot (Open Loop)", y_label: 'Speed (RPM)', chartLineLabel: 'Theoretical Final Value' });
+            ui.displays.explanationContent.innerHTML = `<p>The final response is the <b>superposition</b> of the no-load response and the speed change from the load torque.</p><p><b>Disturbance Transfer Function: &Omega;(s) / T<sub>L</sub>(s)</b></p><div class="tf-display"><span class="tf-numeric">${formatTF(num_dist, den_motor)}</span></div><p>A controller is needed to reject this disturbance. You may now proceed.</p>`;
+            ui.buttons.applyLoad.disabled = true;
+        }
+
+        function simulateCurrentLoop(p) {
+            const time_data = [], current_data = [], voltage_data = [];
+            let i_a = 0, current_error_integral = 0, is_saturated = false, peak_voltage = 0;
+            const V_max = p.voltage;
+            for (let t = 0; t <= p.simTime; t += p.simDt) {
+                const current_error = p.current_sp - i_a;
+                current_error_integral += current_error * p.simDt;
+                let v_commanded = p.current_ctype === 'P' ? p.kp_i * current_error : p.kp_i * current_error + p.ki_i * current_error_integral;
+                peak_voltage = Math.max(peak_voltage, Math.abs(v_commanded));
+                const v_actual = Math.max(-V_max, Math.min(V_max, v_commanded));
+                if (v_actual !== v_commanded) { is_saturated = true; }
+                const di_a_dt = (p.La > 0) ? (v_actual - i_a * p.Ra) / p.La : 0;
+                i_a += di_a_dt * p.simDt;
+                time_data.push(t); current_data.push(i_a); voltage_data.push(v_actual);
+            }
+            return { time_data, current_data, voltage_data, is_saturated, peak_voltage };
+        }
+
+        function plotCurrentLoop(p, simResults) {
+            const { time_data, current_data, voltage_data } = simResults;
+            const { time_axis, final_output } = downsampleData(time_data, current_data, MAX_PLOT_POINTS);
+            const { final_output: final_voltage } = downsampleData(time_data, voltage_data, MAX_PLOT_POINTS);
+            const p_current_num = [1], p_current_den = [p.La, p.Ra];
+            let c_current_poly = p.current_ctype === 'P' ? [p.kp_i] : [p.kp_i, p.ki_i];
+            const c_current_den_poly = c_current_poly.length > 1 ? [1, 0] : [1];
+            const ol_num = poly.multiply(c_current_poly, p_current_num), ol_den = poly.multiply(c_current_den_poly, p_current_den);
+            const cl_num = ol_num, cl_den = poly.add(ol_num, ol_den);
+            plot({ time_axis, final_output, voltage_output: final_voltage, targetForSettling: p.current_sp, ol_num, ol_den, plot_title: "Current Control Loop", bode_title: "Bode Plot (Current Loop)", y_label: 'Current (A)', chartLineLabel: 'Setpoint' });
+
+            const tau_e = p.Ra > 0 ? p.La / p.Ra : Infinity, tau_m = p.b > 0 ? p.J / p.b : Infinity;
+            const step_metrics = analyzeStepResponse(time_axis, final_output, p.current_sp, final_output[final_output.length - 1]);
+            const settlingTimeVal = parseFloat(step_metrics.settlingTime);
+            const timescale_check = settlingTimeVal < tau_m / 5;
+            let canProceed = false;
+            let validationHtml = checkStability(final_output, p.current_sp);
+
+            if (tau_m < 5 * tau_e) {
+                validationHtml += `<p style="color:var(--error-color)"><b>Warning:</b> The mechanical time constant (τ<sub>m</sub> = ${tau_m.toFixed(3)}s) is not much larger than the electrical time constant (τ<sub>e</sub> = ${tau_e.toFixed(3)}s). The cascaded loop assumption is likely invalid.</p>`;
+            } else if (!isFinite(settlingTimeVal) || !timescale_check) {
+                validationHtml += `<p style="color:var(--error-color)"><b>Assumption Check Failed:</b> The current loop is too slow. Its settling time (${step_metrics.settlingTime}) is not significantly faster than the mechanical time constant (τ<sub>m</sub> = ${tau_m.toFixed(3)}s). Please tune the gains (Kp_i, Ki_i) for a faster response before proceeding.</p>`;
+            } else {
+                validationHtml += `<p style="color:var(--success-color)"><b>Validation:</b> The cascaded loop assumption holds (τ<sub>m</sub> >> τ<sub>e</sub>) and the current loop is sufficiently fast. You may now proceed to the speed controller design.</p>`;
+                canProceed = true;
+            }
+
+            ui.displays.explanationContent.innerHTML = `<p><b>Closed-Loop Current Transfer Function: I(s) / I<sub>ref</sub>(s)</b></p><div class="tf-display"><span class="tf-symbolic">C<sub>i</sub>(s)P<sub>i</sub>(s) / (1 + C<sub>i</sub>(s)P<sub>i</sub>(s))</span><span class="tf-numeric">= ${formatTF(cl_num, cl_den)}</span></div><div class="assumption-box"><p><b>Assumption:</b> For analysis, we use a linear model that ignores back-EMF and voltage limits. The plot, however, shows a simulation with the <b>Supply Voltage</b> limit enforced.</p><ul><li>Mechanical Time Constant: <code>&tau;<sub>m</sub> = J/b = ${tau_m.toFixed(3)} s</code></li><li>Electrical Time Constant: <code>&tau;<sub>e</sub> = L<sub>a</sub>/R<sub>a</sub> = ${tau_e.toFixed(3)} s</code></li></ul>${validationHtml}</div>`;
+            ui.buttons.plot2.disabled = true;
+            ui.buttons.proceed.disabled = !canProceed;
+
+            if (!canProceed && !timescale_check && isFinite(settlingTimeVal)) {
+                showModal("Assumption Check Failed", `<p>The cascaded control design relies on the inner (current) loop being much faster than the outer (speed) loop.</p><p>Your current loop's settling time is <b>${step_metrics.settlingTime}</b>, which is not fast enough compared to the motor's mechanical time constant of <b>${tau_m.toFixed(3)}s</b>.</p><p><b>Recommendation:</b> Increase the current controller gains (<code>Kp_i</code>, <code>Ki_i</code>) to achieve a faster settling time, then plot again. The 'Proceed' button will be enabled once the current loop is sufficiently fast.</p>`, [{ text: 'OK', class: 'primary' }]);
+            }
+        }
+
+        function handlePlotStep2() {
+            let p = getParams(); p = enforceCalculationLimit(p);
+            const simResults = simulateCurrentLoop(p);
+            if (simResults.is_saturated) {
+                showModal("Voltage Saturation Detected", `<p>The controller is demanding more voltage than the supply can provide. The required peak voltage is <b>${simResults.peak_voltage.toFixed(2)}V</b>, but the limit is <b>${p.voltage.toFixed(2)}V</b>.</p><p>This "saturation" can make the system respond slower than expected and cause integrator wind-up in PI controllers.</p><p><b>What would you like to do?</b></p>`,
+                [{ text: 'Clip Voltage & Plot', class: 'secondary', callback: () => plotCurrentLoop(p, simResults) }, { text: `Increase Limit to ${Math.ceil(simResults.peak_voltage)}V`, class: 'primary', callback: () => { ui.inputs.voltage.value = Math.ceil(simResults.peak_voltage); handlePlotStep2(); }}]);
+            } else {
+                plotCurrentLoop(p, simResults);
+            }
+        }
+
+        function handlePlotStep3() {
+            let p = getParams(); p = enforceCalculationLimit(p);
+            const p_speed_num = [p.Kt], p_speed_den = [p.J, p.b];
+            let c_speed_poly;
+            if (p.speed_ctype === 'P') { c_speed_poly = [p.kp_s]; } else if (p.speed_ctype === 'PI') { c_speed_poly = [p.kp_s, p.ki_s]; } else { c_speed_poly = [p.kd_s, p.kp_s, p.ki_s]; }
+            const c_speed_den_poly = c_speed_poly.length > 2 ? [1, 0, 0] : (c_speed_poly.length > 1 ? [1, 0] : [1]);
+            const ol_num = poly.multiply(c_speed_poly, p_speed_num), ol_den = poly.multiply(c_speed_den_poly, p_speed_den);
+            const cl_num = ol_num, cl_den = poly.add(ol_num, ol_den);
+            const ss_main = tfToSS(cl_num, cl_den);
+            const { time, output: output_main } = simulateSystem(ss_main, p.simTime, p.simDt, p.speed_sp * RPM_TO_RADS);
+            const delay_steps_cl = Math.round(p.load_torque_delay / p.simDt);
+            let disturbance_effect = Array(output_main.length).fill(0);
+            if(p.TL > 0) {
+                const ss_dist_tf = tfToSS(poly.multiply(p_speed_den, c_speed_den_poly), cl_den);
+                if (ss_dist_tf) { const {output: dist_rejection_transient} = simulateSystem(ss_dist_tf, p.simTime, p.simDt, -p.TL / p.Kt); for (let i = delay_steps_cl; i < disturbance_effect.length; i++) { disturbance_effect[i] = dist_rejection_transient[i - delay_steps_cl] || 0; } }
+            }
+            const combined_output_rpm = output_main.map((val, i) => (val + disturbance_effect[i]) * RADS_TO_RPM);
+            const { time_axis, final_output } = downsampleData(time, combined_output_rpm, MAX_PLOT_POINTS);
+            plot({ time_axis, final_output, targetForSettling: p.speed_sp, ol_num, ol_den, plot_title: "Speed Control Loop", bode_title: "Bode Plot (Speed Loop)", y_label: 'Speed (RPM)', chartLineLabel: 'Setpoint'});
+            
+            const stability_html = checkStability(final_output, p.speed_sp);
+            ui.displays.explanationContent.innerHTML = `<p><b>Closed-Loop Speed Transfer Function: &Omega;(s) / &Omega;<sub>ref</sub>(s)</b></p><div class="tf-display"><span class="tf-symbolic">C<sub>s</sub>(s)P<sub>s</sub>(s) / (1 + C<sub>s</sub>(s)P<sub>s</sub>(s))</span><span class="tf-numeric">= ${formatTF(cl_num, cl_den)}</span></div><div class="assumption-box"><p><b>Assumption:</b> The inner current loop is assumed to be ideal (i.e., its transfer function is 1), and its output perfectly drives the mechanical plant: <code>P<sub>s</sub>(s) = K<sub>t</sub> / (Js + b)</code>.</p><p><b>Note:</b> If you encountered "Voltage Saturation" in Step 2, the true system response may be slower or more sluggish than this ideal linear model predicts.</p>${stability_html}</div>`;
+            ui.buttons.plot3.disabled = true; ui.buttons.proceed.disabled = false;
+        }
+
+        // --- UI & EVENT LISTENERS ---
+        function setupGainSlider(sliderId, numberId) { const slider = document.getElementById(sliderId), numberInput = document.getElementById(numberId); const updateSliderFromNumber = () => { const value = parseFloat(numberInput.value); if (!isNaN(value)) { if (value > parseFloat(slider.max)) slider.max = value; slider.value = value; }}; const updateNumberFromSlider = () => { numberInput.value = slider.value; numberInput.dispatchEvent(new Event('input', { bubbles: true })); }; updateSliderFromNumber(); slider.addEventListener('input', updateNumberFromSlider); numberInput.addEventListener('input', updateSliderFromNumber); }
+        function updateGainVisibility(prefix) { const type = ui.inputs[prefix + '_ctype'].value; if (prefix === 'current') { ui.gainGroups.current_kp.style.display = ['P', 'PI'].includes(type) ? 'block' : 'none'; ui.gainGroups.current_ki.style.display = ['PI'].includes(type) ? 'block' : 'none'; } else if (prefix === 'speed') { ui.gainGroups.speed_kp.style.display = ['P', 'PI', 'PID'].includes(type) ? 'block' : 'none'; ui.gainGroups.speed_ki.style.display = ['PI', 'PID'].includes(type) ? 'block' : 'none'; ui.gainGroups.speed_kd.style.display = ['PID'].includes(type) ? 'block' : 'none'; } }
+        
+        function updateUIForStep(nextStep, autoPlot = false) {
+            state.step = nextStep;
+            Object.values(ui.controls).forEach(el => el.classList.add('hidden'));
+            ui.displays.motorParamGrid.classList.remove('hidden'); 
+            ui.displays.effortChartContainer.classList.add('hidden');
+            ui.buttons.back.classList.remove('hidden'); ui.buttons.proceed.disabled = true; ui.buttons.proceed.textContent = "Proceed";
+            let title = "", explanation = "";
+            switch (nextStep) {
+                case 1:
+                    title = "Step 1: Open-Loop Analysis"; explanation = `<p>Start by defining the motor's physical parameters and click "Plot Open Loop" to see its natural response.</p>`;
+                    ui.controls[1].classList.remove('hidden'); ui.controls[1.5].classList.remove('hidden');
+                    ui.buttons.applyLoad.classList.remove('hidden'); ui.buttons.back.classList.add('hidden');
+                    ui.buttons.plotOL.disabled = false;
+                    break;
+                case 2:
+                    title = "Step 2: Current Control Loop"; explanation = `<p>Design the inner current loop. Adjust the controller type and gains, then click 'Plot Current Loop' to see the response. The goal is a fast response without overshoot or saturation.</p>`;
+                    ui.controls[1].classList.remove('hidden'); ui.displays.motorParamGrid.classList.add('hidden');
+                    ui.controls[2].classList.remove('hidden');
+                    updateGainVisibility('current'); ui.buttons.plot2.disabled = false;
+                    break;
+                case 3:
+                    title = "Step 3: Speed Control Loop"; explanation = `<p>Design the outer speed loop to track a speed setpoint and reject disturbances. Tune the gains and plot the final system response.</p>`;
+                    ui.controls[1].classList.remove('hidden'); ui.displays.motorParamGrid.classList.add('hidden');
+                    ui.controls[3].classList.remove('hidden'); ui.controls[1.5].classList.remove('hidden');
+                    ui.buttons.applyLoad.classList.add('hidden'); updateGainVisibility('speed');
+                    ui.buttons.proceed.textContent = "Restart"; ui.buttons.plot3.disabled = false;
+                    break;
+            }
+            ui.mainTitle.textContent = title; ui.displays.explanationContent.innerHTML = explanation;
+            if (autoPlot) {
+                if (nextStep === 1) handlePlotOpenLoop(); 
+            }
+        }
+        
+        ui.buttons.plotOL.addEventListener('click', handlePlotOpenLoop);
+        ui.buttons.applyLoad.addEventListener('click', handleApplyLoad);
+        ui.buttons.plot2.addEventListener('click', handlePlotStep2);
+        ui.buttons.plot3.addEventListener('click', handlePlotStep3);
+        
+        const enablePlotButton = () => { ui.buttons.proceed.disabled = true; if (state.step === 1) { ui.buttons.plotOL.disabled = false; if (state.baseOLResponse) ui.buttons.applyLoad.disabled = false; } else if (state.step === 2) { ui.buttons.plot2.disabled = false; } else if (state.step === 3) { ui.buttons.plot3.disabled = false; }};
+        ui.inputs.motorParams.forEach(input => input.addEventListener('input', enablePlotButton));
+        ui.inputs.simParams.forEach(input => input.addEventListener('input', enablePlotButton));
+        ui.inputs.loadParams.forEach(input => input.addEventListener('input', () => { if (state.step === 1 && state.baseOLResponse) ui.buttons.applyLoad.disabled = false; if (state.step === 3) enablePlotButton(); }));
+        ui.inputs.step2Params.forEach(el => el.addEventListener('input', enablePlotButton));
+        ui.inputs.step3Params.forEach(el => el.addEventListener('input', enablePlotButton));
+        
+        ui.buttons.back.addEventListener('click', () => {
+            const targetStep = state.step - 1;
+            updateUIForStep(targetStep, false);
+        });
+        ui.buttons.proceed.addEventListener('click', () => { 
+            const nextStep = state.step < 3 ? state.step + 1 : 1;
+            const autoPlotOnProceed = (nextStep !== 2 && nextStep !== 3); 
+            updateUIForStep(nextStep, autoPlotOnProceed);
+        });
+        
+        ui.inputs.current_ctype.addEventListener('change', () => updateGainVisibility('current'));
+        ui.inputs.speed_ctype.addEventListener('change', () => updateGainVisibility('speed'));
+        ui.tabs.forEach(button => { button.addEventListener('click', (e) => { ui.tabs.forEach(btn => btn.classList.remove('active')); e.currentTarget.classList.add('active'); ui.plotContainers.forEach(c => c.classList.remove('active')); document.getElementById(e.currentTarget.dataset.target).classList.add('active'); }); });
+        ui.modal.closeBtn.addEventListener('click', hideModal);
+        ui.modal.overlay.addEventListener('click', (e) => { if (e.target === ui.modal.overlay) hideModal(); });
+
+        // --- INITIALIZATION ---
+        setupGainSlider('kp_i-slider', 'kp_i'); setupGainSlider('ki_i-slider', 'ki_i');
+        setupGainSlider('kp_s-slider', 'kp_s'); setupGainSlider('ki_s-slider', 'ki_s'); setupGainSlider('kd_s-slider', 'kd_s');
+        updateUIForStep(1);
+    });
+    </script>
+  </body>
+</html>
