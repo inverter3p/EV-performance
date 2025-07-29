@@ -14,6 +14,11 @@
     <!-- Chart.js Library from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
 
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4EDzyVc+cR5NWSVKwsaqfvqjOIzpzzMCMi+z66Fx3Sfx+niSsjj8B7z72Fc" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-Pm5458NYMDA7gGyg5TusExTwYHGzVyyJt7SnzPfikpBlSWSFcGfyptXcngyLzFWS" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-43gviWU0YVjaDtb/GieNzk47T/5mi/MIG0MlzGYW/LwiWG6ry8PciFToVNAo06Fg" crossorigin="anonymous"></script>
+
 
     <style>
         /* --- General & Root Styles --- */
@@ -27,6 +32,8 @@
             --text-light: #666;
             --border-color: #e0e0e0;
             --shadow: 0 3px 6px rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.15);
+            --error-color: #d32f2f; /* Material Design Red */
+            --warning-color: #fbc02d; /* Material Design Amber */
         }
 
         * {
@@ -93,6 +100,7 @@
             align-items: center;
             gap: 20px;
             flex-wrap: wrap;
+            margin-bottom: 20px; /* Added margin below images */
         }
 
         .info-card img {
@@ -100,6 +108,19 @@
             height: auto;
             border-radius: 4px;
             border: 1px solid var(--border-color);
+        }
+
+        .equations-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .equations-section h3 {
+            font-weight: 500;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            text-align: center;
         }
         
         /* --- Controls & Forms --- */
@@ -141,7 +162,7 @@
             color: var(--primary-light);
         }
 
-        #plotButton, #showDataButton {
+        #plotButton, #showDataButton, #showDerivationButton {
             width: 100%;
             padding: 12px;
             border-radius: 4px;
@@ -162,14 +183,25 @@
         }
         
         #showDataButton {
-             background-color: var(--primary-color);
+            background-color: var(--primary-color);
             color: white;
             border: none;
-             margin-top: 15px;
+            margin-top: 15px;
         }
 
         #showDataButton:hover {
-             background-color: var(--primary-light);
+            background-color: var(--primary-light);
+        }
+
+        #showDerivationButton {
+            background-color: var(--accent-color); /* Different color for derivation button */
+            color: white;
+            border: none;
+            margin-top: 15px;
+        }
+
+        #showDerivationButton:hover {
+            background-color: #d84315;
         }
 
         /* Results Display (within plot card) */
@@ -232,6 +264,12 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             position: relative;
         }
+
+        /* Specific style for the derivation modal to allow more height */
+        #derivationModal .modal-content {
+            max-height: 80vh; /* Limit height to 80% of viewport height */
+            overflow-y: auto; /* Enable scrolling for long content */
+        }
         
         .modal-header {
             display: flex;
@@ -283,6 +321,29 @@
             color: black;
         }
 
+        /* Message Modal Specific Styles */
+        #messageModal .modal-content {
+            max-width: 400px;
+            text-align: center;
+        }
+        #messageModal .modal-header {
+            justify-content: center; /* Center the title for messages */
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        #messageModal .close-button {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            margin-left: 0;
+        }
+        #messageText {
+            font-size: 1.1rem;
+            margin-top: 15px;
+            color: var(--text-color);
+        }
+
         /* --- RESPONSIVE STYLES --- */
         @media (max-width: 1024px) {
             .content-grid {
@@ -304,9 +365,37 @@
                 <div class="card info-card">
                     <h2>Motor & Equivalent Circuit</h2>
                     <div class="image-container">
-                        <img src="https://i.imgur.com/8QZ7x5h.png" alt="Induction Motor Cross-Section">
-                        <img src="https://i.imgur.com/eB4dYgT.png" alt="Per-Phase Equivalent Circuit">
+                        <!-- Added the new images here -->
+                        <img src="https://i.postimg.cc/d3wYMwp2/im-equivalent.png" alt="im-equivalent" border="0">
+                        <img src="https://i.postimg.cc/SsWhtJTQ/im-equivalent-Vth.png" alt="im-equivalent-vth" border="0">
                     </div>
+                    <div class="equations-section">
+                        <h3>Key Equations (Thevenin Equivalent)</h3>
+                        <p>
+                            $$V_{th} = V_{ph} \frac{X_m}{\sqrt{R_1^2 + (X_1 + X_m)^2}}$$
+                        </p>
+                        <p>
+                            $$R_{th} = \frac{R_1 X_m^2}{R_1^2 + (X_1 + X_m)^2}$$
+                        </p>
+                        <p>
+                            $$X_{th} = \frac{X_m (R_1^2 + X_1(X_1 + X_m))}{R_1^2 + (X_1 + X_m)^2}$$
+                        </p>
+                        <p>
+                            $$T_e = \frac{3 V_{th}^2 (R_2'/s)}{\omega_s [(R_{th} + R_2'/s)^2 + (X_{th} + X_2')^2]}$$
+                        </p>
+                        <p>
+                            $$P_{mech} = 3 I_2'^2 R_2' \frac{(1-s)}{s} = T_e \omega_m$$
+                        </p>
+                        <p style="font-size: 0.9em; color: var(--text-light); margin-top: 15px;">
+                            $$ \text{Where: } V_{ph} \text{ is per-phase voltage, } X_1 = \omega_e L_1, X_2' = \omega_e L_2', X_m = \omega_e L_m, \omega_e = 2\pi f, \omega_s = \omega_e / (P/2) $$
+                            $$ \text{R}_2' \text{ is rotor resistance referred to stator side.} $$
+                            $$ \text{X}_2' \text{ is rotor leakage reactance referred to stator side.} $$
+                            $$ P_{mech} \text{ is mechanical power converted from electrical to mechanical form.} $$
+                            $$ \omega_m \text{ is rotor mechanical speed in rad/s.} $$
+                        </p>
+                    </div>
+                    <!-- Moved Show Derivation button here -->
+                    <button type="button" id="showDerivationButton">Show Derivation</button>
                 </div>
             </div>
 
@@ -387,7 +476,7 @@
     <!-- Help Modal -->
     <div id="helpModal" class="modal">
         <div class="modal-content">
-             <div class="modal-header">
+            <div class="modal-header">
                 <h3 id="modalTitle">Parameter Help</h3>
                 <span class="close-button" data-modal-id="helpModal">&times;</span>
             </div>
@@ -401,8 +490,8 @@
             <div class="modal-header">
                 <h3>Plot Data Table</h3>
                 <div>
-                     <button id="copyDataButton">Copy to Clipboard</button>
-                     <span class="close-button" data-modal-id="dataModal">&times;</span>
+                    <button id="copyDataButton">Copy to Clipboard</button>
+                    <span class="close-button" data-modal-id="dataModal">&times;</span>
                 </div>
             </div>
             <div id="dataTableContainer">
@@ -411,12 +500,152 @@
         </div>
     </div>
 
+    <!-- Message Modal (for alerts) -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="messageTitle"></h3>
+                <span class="close-button" data-modal-id="messageModal">&times;</span>
+            </div>
+            <p id="messageText"></p>
+        </div>
+    </div>
+
+    <!-- Derivation Modal -->
+    <div id="derivationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Derivation of Mechanical Power and Torque</h3>
+                <span class="close-button" data-modal-id="derivationModal">&times;</span>
+            </div>
+            <div id="derivationContent">
+                <!-- Content from "torque-derivation" will be inserted here -->
+                The power flow in an induction motor can be understood by tracking the energy conversion from electrical input to mechanical output, considering the losses at each stage.
+
+                <h3>1. Air Gap Power ($P_{AG}$)</h3>
+
+                The electrical power that is transferred from the stator to the rotor across the air gap is known as the Air Gap Power ($P_{AG}$). In the per-phase equivalent circuit, this power is dissipated in the equivalent rotor resistance $\frac{R_2'}{s}$.
+
+                For a three-phase motor, the total air gap power is:
+
+                $$
+                P_{AG} = 3 I_2'^2 \left(\frac{R_2'}{s}\right)
+                $$
+
+                Where $I_2'$ is the rotor current referred to the stator side. From the Thevenin equivalent circuit, the magnitude of $I_2'$ is given by:
+
+                $$
+                I_2' = \frac{V_{th}}{\sqrt{(R_{th} + R_2'/s)^2 + (X_{th} + X_2')^2}}
+                $$
+
+                Substituting the expression for $I_2'$ into the $P_{AG}$ equation:
+
+                $$
+                P_{AG} = 3 \left( \frac{V_{th}}{\sqrt{(R_{th} + R_2'/s)^2 + (X_{th} + X_2')^2}} \right)^2 \left(\frac{R_2'}{s}\right)
+                $$
+
+                $$
+                P_{AG} = \frac{3 V_{th}^2 (R_2'/s)}{(R_{th} + R_2'/s)^2 + (X_{th} + X_2')^2}
+                $$
+
+                <h3>2. Rotor Copper Loss ($P_{RCL}$)</h3>
+
+                A portion of the air gap power is lost as heat due to the current flowing through the rotor windings. This is the rotor copper loss ($P_{RCL}$). Using the referred rotor resistance $R_2'$:
+
+                $$
+                P_{RCL} = 3 I_2'^2 R_2'
+                $$
+
+                From the relationship between $P_{AG}$ and $I_2'^2 (R_2'/s)$, we can also express rotor copper loss in terms of air gap power and slip ($s$):
+
+                $$
+                P_{RCL} = s \cdot P_{AG}
+                $$
+
+                <h3>3. Mechanical Power Developed ($P_{conv}$)</h3>
+
+                The mechanical power developed ($P_{conv}$) is the portion of the air gap power that is actually converted from electrical to mechanical form. It is the air gap power minus the rotor copper losses:
+
+                $$
+                P_{conv} = P_{AG} - P_{RCL}
+                $$
+
+                Substituting $P_{RCL} = s \cdot P_{AG}$:
+
+                $$
+                P_{conv} = P_{AG} - s \cdot P_{AG}
+                $$
+
+                $$
+                P_{conv} = P_{AG} (1 - s)
+                $$
+
+                Now, substitute the full expression for $P_{AG}$:
+
+                $$
+                P_{conv} = \frac{3 V_{th}^2 (R_2'/s)}{(R_{th} + R_2'/s)^2 + (X_{th} + X_2')^2} (1 - s)
+                $$
+
+                This equation represents the gross mechanical power developed by the motor before accounting for rotational losses (friction, windage, and stray losses).
+
+                <h3>4. Electromagnetic Torque ($T_e$) Calculation</h3>
+
+                The mechanical power developed ($P_{conv}$) is directly related to the electromagnetic torque ($T_e$) and the mechanical angular speed of the rotor ($\omega_m$). The relationship is:
+
+                $$
+                P_{conv} = T_e \cdot \omega_m
+                $$
+
+                Therefore, the electromagnetic torque can be found by:
+
+                $$
+                T_e = \frac{P_{conv}}{\omega_m}
+                $$
+
+                We also know that the mechanical angular speed of the rotor ($\omega_m$) is related to the synchronous angular speed ($\omega_s$) and slip ($s$) by:
+
+                $$
+                \omega_m = \omega_s (1 - s)
+                $$
+
+                Substitute this expression for $\omega_m$ into the torque equation:
+
+                $$
+                T_e = \frac{P_{conv}}{\omega_s (1 - s)}
+                $$
+
+                Now, substitute $P_{conv} = P_{AG} (1 - s)$:
+
+                $$
+                T_e = \frac{P_{AG} (1 - s)}{\omega_s (1 - s)}
+                $$
+
+                Since $(1-s)$ appears in both the numerator and denominator, they cancel out (as long as $s \neq 1$, i.e., the motor is not at standstill):
+
+                $$
+                T_e = \frac{P_{AG}}{\omega_s}
+                $$
+
+                Finally, substitute the full expression for $P_{AG}$:
+
+                $$
+                T_e = \frac{1}{\omega_s} \left( \frac{3 V_{th}^2 (R_2'/s)}{(R_{th} + R_2'/s)^2 + (X_{th} + X_2')^2} \right)
+                $$
+
+                This is the fundamental torque equation for an induction motor, showing how it is derived from the air gap power and synchronous speed.
+            </div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let torqueSpeedChart = null;
             let fullDataTable = { headers: [], rows: [] };
 
+            // Render KaTeX equations after the DOM is fully loaded
+            renderMathInElement(document.body);
+
+            // Definitions for help popups
             const paramExplanations = {
                 v_ll: { title: 'Line-to-Line Voltage (V L-L)', text: 'The RMS voltage supplying the motor. Use a comma-separated list to plot multiple curves (e.g., "400, 200").' },
                 freq: { title: 'Supply Frequency (Hz)', text: 'The frequency of the power supply. Use a comma-separated list to plot multiple curves (e.g., "50, 25"). The number of entries must match the voltages.' },
@@ -427,6 +656,17 @@
                 l2: { title: 'Rotor Leakage Inductance (L2\')', text: 'The per-phase inductance of the rotor winding, referred to the stator side. This value is critical for determining the slip at which maximum torque occurs.' },
                 lm: { title: 'Magnetizing Inductance (Lm)', text: 'The per-phase inductance representing the magnetizing current required to establish the main magnetic flux. Used to calculate magnetizing reactance (Xm).' }
             };
+
+            /**
+             * Displays a custom message modal instead of alert().
+             * @param {string} title - The title of the message.
+             * @param {string} message - The message content.
+             */
+            function showMessageModal(title, message) {
+                document.getElementById('messageTitle').textContent = title;
+                document.getElementById('messageText').textContent = message;
+                document.getElementById('messageModal').style.display = 'block';
+            }
 
             /**
              * Converts a hex color string to a hex string with an alpha channel.
@@ -440,44 +680,67 @@
                 return hex + alphaHex;
             }
 
+            /**
+             * Calculates the torque-speed curve data for a single set of parameters.
+             * @param {number} v_ll - Line-to-line voltage.
+             * @param {number} f - Frequency.
+             * @param {number} p - Number of poles.
+             * @param {number} r1 - Stator resistance.
+             * @param {number} l1 - Stator leakage inductance.
+             * @param {number} r2 - Rotor resistance (referred).
+             * @param {number} l2 - Rotor leakage inductance (referred).
+             * @param {number} lm - Magnetizing inductance.
+             * @param {string} xAxisType - 'rpm' or 'slip'.
+             * @returns {object} - Object containing plot points, special points, and calculated results.
+             */
             function calculateSingleCurveData(v_ll, f, p, r1, l1, r2, l2, lm, xAxisType) {
-                const omega_e = 2 * Math.PI * f;
-                const v_ph = v_ll / Math.sqrt(3);
-                const n_sync = (120 * f) / p;
-                const w_sync = omega_e / (p / 2);
+                const omega_e = 2 * Math.PI * f; // Electrical angular frequency
+                const v_ph = v_ll / Math.sqrt(3); // Per-phase voltage
+                const n_sync = (120 * f) / p; // Synchronous speed in RPM
+                const w_sync = omega_e / (p / 2); // Synchronous angular speed in rad/s
 
+                // Calculate reactances
                 const x1 = omega_e * l1;
                 const x2 = omega_e * l2;
                 const xm = omega_e * lm;
 
+                // Thevenin equivalent circuit parameters
                 const z_th_complex_denom = r1 * r1 + (x1 + xm) * (x1 + xm);
                 const r_th = (r1 * xm * xm) / z_th_complex_denom;
-                const x_th = (r1 * r1 * xm + x1 * xm * (x1 + xm)) / z_th_complex_denom;
-                const v_th = v_ph * (xm / Math.sqrt(z_th_complex_denom));
+                const x_th = (xm * (r1 * r1 + x1 * (x1 + xm))) / z_th_complex_denom; // Corrected X_th calculation
+                const v_th = v_ph * (xm / Math.sqrt(r1 * r1 + (x1 + xm) * (x1 + xm))); 
 
                 const plotPoints = [];
-                const steps = 400;
+                const steps = 400; // Number of points for the curve
 
+                // Calculate torque for various slip values (from 1 to 0)
                 for (let i = steps; i >= 0; i--) {
-                    const s = i / steps;
+                    const s = i / steps; // Slip varies from 1 (standstill) to 0 (synchronous speed)
                     let torque = 0;
-                    if (s > 0) {
+                    if (s > 0) { // Avoid division by zero at s=0
                         const denom = Math.pow(r_th + r2 / s, 2) + Math.pow(x_th + x2, 2);
                         torque = (3 * v_th * v_th * (r2 / s)) / (w_sync * denom);
                     }
-                    const speed_rpm = n_sync * (1 - s);
+                    const speed_rpm = n_sync * (1 - s); // Speed in RPM
                     const xAxisValue = (xAxisType === 'rpm') ? speed_rpm : s;
                     plotPoints.push({ x: xAxisValue, y: torque });
                 }
 
-                const s_max = r2 / Math.sqrt(r_th * r_th + Math.pow(x_th + x2, 2));
-                const t_start = plotPoints.find(p => (xAxisType === 'rpm' && p.x === 0) || (xAxisType === 'slip' && p.x === 1))?.y || 0;
-                const t_max = (s_max > 0 && s_max <= 1) ? (3 * v_th * v_th * (r2 / s_max)) / (w_sync * (Math.pow(r_th + r2 / s_max, 2) + Math.pow(x_th + x2, 2))) : 0;
-                const n_max_torque = n_sync * (1 - s_max);
+                // Calculate special points: starting torque and maximum torque
+                const s_max = r2 / Math.sqrt(r_th * r_th + Math.pow(x_th + x2, 2)); // Slip at maximum torque
+                const t_start = plotPoints.find(p => (xAxisType === 'rpm' && Math.abs(p.x) < 0.01) || (xAxisType === 'slip' && Math.abs(p.x - 1) < 0.01))?.y || 0; // Torque at s=1 (speed=0)
+                
+                // Calculate maximum torque using the formula
+                let t_max = 0;
+                if (s_max > 0) { // Ensure s_max is valid
+                    const denom_max = Math.pow(r_th + r2 / s_max, 2) + Math.pow(x_th + x2, 2);
+                    t_max = (3 * v_th * v_th * (r2 / s_max)) / (w_sync * denom_max);
+                }
+                const n_max_torque = n_sync * (1 - s_max); // Speed at maximum torque
 
                 const specialPoints = [
-                    { x: xAxisType === 'rpm' ? 0 : 1, y: t_start },
-                    { x: xAxisType === 'rpm' ? n_max_torque : s_max, y: t_max }
+                    { x: xAxisType === 'rpm' ? 0 : 1, y: t_start, label: 'Starting Torque' }, // Starting torque point
+                    { x: xAxisType === 'rpm' ? n_max_torque : s_max, y: t_max, label: 'Max Torque' } // Maximum torque point
                 ];
 
                 return {
@@ -487,90 +750,121 @@
                 };
             }
 
+            /**
+             * Draws or updates the Chart.js plot with new data.
+             */
             function drawPlot() {
+                // Get input values
                 const v_ll_str = document.getElementById('v_ll').value;
                 const freq_str = document.getElementById('freq').value;
-                const p = parseInt(document.getElementById('poles').value);
-                const r1 = parseFloat(document.getElementById('r1').value);
-                const l1 = parseFloat(document.getElementById('l1').value);
-                const r2 = parseFloat(document.getElementById('r2').value);
-                const l2 = parseFloat(document.getElementById('l2').value);
-                const lm = parseFloat(document.getElementById('lm').value);
+                const p_input = document.getElementById('poles').value;
+                const r1_input = document.getElementById('r1').value;
+                const l1_input = document.getElementById('l1').value;
+                const r2_input = document.getElementById('r2').value;
+                const l2_input = document.getElementById('l2').value;
+                const lm_input = document.getElementById('lm').value;
                 const xAxisType = document.getElementById('xAxisSelect').value;
+
+                // Input validation
+                const poles = parseInt(p_input);
+                if (isNaN(poles) || poles <= 0 || poles % 2 !== 0) {
+                    showMessageModal("Input Error", "Number of poles must be a positive even integer.");
+                    return;
+                }
+
+                const r1 = parseFloat(r1_input);
+                const l1 = parseFloat(l1_input);
+                const r2 = parseFloat(r2_input);
+                const l2 = parseFloat(l2_input);
+                const lm = parseFloat(lm_input);
+
+                if (isNaN(r1) || isNaN(l1) || isNaN(r2) || isNaN(l2) || isNaN(lm) || 
+                    r1 < 0 || l1 < 0 || r2 < 0 || l2 < 0 || lm < 0) {
+                    showMessageModal("Input Error", "All resistance and inductance values must be non-negative numbers.");
+                    return;
+                }
 
                 const voltages = v_ll_str.split(',').map(s => parseFloat(s.trim()));
                 const frequencies = freq_str.split(',').map(s => parseFloat(s.trim()));
 
-                if (voltages.length !== frequencies.length) {
-                    alert("Error: The number of comma-separated voltages must match the number of frequencies.");
-                    return;
-                }
-                if (voltages.some(isNaN) || frequencies.some(isNaN)) {
-                    alert("Error: Please enter valid numbers for voltage and frequency.");
+                if (voltages.some(isNaN) || frequencies.some(isNaN) || voltages.some(v => v <= 0) || frequencies.some(f => f <= 0)) {
+                    showMessageModal("Input Error", "Voltage and Frequency must be positive numbers. Use comma-separated values for multiple curves.");
                     return;
                 }
 
-                const colorPalette = ['#00796b', '#ff5722', '#3f51b5', '#e91e63', '#9c27b0', '#03a9f4'];
+                if (voltages.length !== frequencies.length) {
+                    showMessageModal("Input Error", "The number of comma-separated voltages must match the number of frequencies.");
+                    return;
+                }
+
+                const colorPalette = ['#00796b', '#ff5722', '#3f51b5', '#e91e63', '#9c27b0', '#03a9f4', '#ffeb3b', '#4caf50']; // Extended color palette
                 const chartDatasets = [];
                 const allResults = [];
                 const allPlotPoints = [];
+                
+                // Initialize fullDataTable headers
                 fullDataTable.headers = [(xAxisType === 'rpm') ? 'Speed (rpm)' : 'Slip (s)'];
                 
+                // Iterate through each voltage/frequency pair to generate curves
                 for (let i = 0; i < voltages.length; i++) {
                     const v_ll = voltages[i];
                     const f = frequencies[i];
-                    const color = colorPalette[i % colorPalette.length];
+                    const color = colorPalette[i % colorPalette.length]; // Cycle through colors
                     const label = `${v_ll}V / ${f}Hz`;
 
-                    const data = calculateSingleCurveData(v_ll, f, p, r1, l1, r2, l2, lm, xAxisType);
+                    // Calculate data for the current curve
+                    const data = calculateSingleCurveData(v_ll, f, poles, r1, l1, r2, l2, lm, xAxisType);
                     allResults.push({ label, ...data.results });
                     allPlotPoints.push(data.plotPoints);
-                    fullDataTable.headers.push(`Torque (${label})`);
+                    fullDataTable.headers.push(`Torque (${label})`); // Add torque header for this curve
 
-                    // Main torque curve line
+                    // Add main torque curve dataset
                     chartDatasets.push({
                         label: label,
                         data: data.plotPoints,
                         borderColor: color,
-                        backgroundColor: addAlphaToHex(color, 0.15),
+                        backgroundColor: addAlphaToHex(color, 0.15), // Filled area under the curve
                         borderWidth: 3,
-                        pointRadius: 0,
-                        tension: 0.1,
+                        pointRadius: 0, // No points on the line
+                        tension: 0.1, // Smooth curve
                         fill: true,
-                        order: 1 
+                        order: 1 // Ensure lines are on top of scatter points if needed
                     });
 
-                    // Key points markers
+                    // Add key points (starting torque, max torque) as scatter points
                     chartDatasets.push({
-                        type: 'scatter',
+                        type: 'scatter', // Use scatter type for individual points
                         label: `Key Points for ${label}`,
                         data: data.specialPoints,
                         backgroundColor: color,
                         pointRadius: 6,
                         pointHoverRadius: 9,
-                        showLine: false,
-                        order: 0
+                        showLine: false, // Do not draw a line between these points
+                        order: 0 // Ensure points are behind the main line
                     });
                 }
                 
+                // Update the results display and prepare data for the table
                 updateResultsDisplay(allResults);
                 prepareDataTable(allPlotPoints, xAxisType);
                 
+                // Get canvas element and destroy existing chart if any
                 const canvas = document.getElementById('torqueSpeedChart');
                 if (torqueSpeedChart) torqueSpeedChart.destroy();
                 
+                // Create new Chart.js instance
                 torqueSpeedChart = new Chart(canvas.getContext('2d'), {
-                    type: 'line',
+                    type: 'line', // Default type is line, but scatter is used for key points
                     data: { datasets: chartDatasets },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: false,
+                        maintainAspectRatio: false, // Allow canvas to resize freely
                         scales: {
                             x: {
                                 type: 'linear',
                                 position: 'bottom',
                                 title: { display: true, text: (xAxisType === 'rpm') ? 'Rotor Speed (rpm)' : 'Slip (s)', font: { size: 14, weight: '500' } },
-                                reverse: xAxisType === 'slip'
+                                reverse: xAxisType === 'slip' // Reverse X-axis for slip (1 to 0)
                             },
                             y: {
                                 beginAtZero: true,
@@ -578,22 +872,56 @@
                             }
                         },
                         plugins: {
-                            tooltip: { mode: 'index', intersect: false },
+                            tooltip: { 
+                                mode: 'index', 
+                                intersect: false,
+                                callbacks: {
+                                    title: function(tooltipItems) {
+                                        // Custom title to show X-axis value clearly
+                                        const item = tooltipItems[0];
+                                        if (item) {
+                                            const xVal = item.parsed.x;
+                                            return `${(xAxisType === 'rpm') ? 'Speed' : 'Slip'}: ${xVal.toFixed(xAxisType === 'rpm' ? 0 : 3)}`;
+                                        }
+                                        return '';
+                                    },
+                                    label: function(context) {
+                                        // Custom label to show torque value
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            if (label.includes('Key Points')) { // Special handling for key points
+                                                const pointLabel = context.raw.label || ''; // Get label from specialPoints
+                                                return `${pointLabel}: ${context.parsed.y.toFixed(2)} Nm`;
+                                            } else {
+                                                label += ': ';
+                                            }
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += context.parsed.y.toFixed(2) + ' Nm';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            },
                             legend: {
-                                display: voltages.length > 1,
+                                display: voltages.length > 0, // Only display legend if there's at least one curve
                                 labels: {
-                                    filter: item => !item.text.includes('Key Points')
+                                    filter: item => !item.text.includes('Key Points') // Hide "Key Points" labels from legend
                                 }
                             }
                         },
-                        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                        interaction: { mode: 'nearest', axis: 'x', intersect: false } // Enable interactive tooltips
                     }
                 });
             }
 
+            /**
+             * Updates the display area with calculated key results (synchronous speed, starting torque, max torque).
+             * @param {Array<object>} allResults - An array of result objects for each curve.
+             */
             function updateResultsDisplay(allResults) {
                 const resultsList = document.getElementById('resultsList');
-                resultsList.innerHTML = '';
+                resultsList.innerHTML = ''; // Clear previous results
                 allResults.forEach(res => {
                     const resultDiv = document.createElement('div');
                     resultDiv.className = 'multi-result-set';
@@ -616,29 +944,44 @@
                 });
             }
 
+            /**
+             * Prepares the data for the data table modal.
+             * @param {Array<Array<object>>} allPlotPoints - Array of plot point arrays for each curve.
+             * @param {string} xAxisType - 'rpm' or 'slip'.
+             */
             function prepareDataTable(allPlotPoints, xAxisType) {
                 fullDataTable.rows = [];
                 if (allPlotPoints.length === 0) return;
 
+                // Use the x-axis points from the first curve as the master list
                 const masterXPoints = allPlotPoints[0].map(p => p.x);
                 
                 for (let i = 0; i < masterXPoints.length; i++) {
+                    // Create a row starting with the x-axis value
                     const row = [xAxisType === 'slip' ? masterXPoints[i].toFixed(4) : masterXPoints[i].toFixed(2)];
+                    // Add torque values for each curve at this x-axis point
                     for (let j = 0; j < allPlotPoints.length; j++) {
                         row.push(allPlotPoints[j][i].y.toFixed(3));
                     }
                     fullDataTable.rows.push(row);
                 }
-                fullDataTable.rows.reverse();
+                // Reverse the rows to have speed/slip increasing (if rpm) or decreasing (if slip)
+                fullDataTable.rows.reverse(); 
             }
 
+            /**
+             * Populates the data table modal with the prepared data.
+             * Limits the number of displayed points for performance.
+             */
             function populateDataTable() {
-                const maxPoints = 50;
+                const maxPoints = 50; // Max points to display in table for readability
                 const data = fullDataTable.rows;
+                // Calculate step to sample data if there are too many points
                 const step = Math.max(1, Math.ceil(data.length / maxPoints));
                 
-                let tableString = fullDataTable.headers.join('\t') + '\n';
+                let tableString = fullDataTable.headers.join('\t') + '\n'; // Headers separated by tabs
                 
+                // Add data rows, sampling based on 'step'
                 for(let i = 0; i < data.length; i += step) {
                     tableString += data[i].join('\t') + '\n';
                 }
@@ -650,19 +993,43 @@
             document.getElementById('plotButton').addEventListener('click', drawPlot);
             document.getElementById('xAxisSelect').addEventListener('change', drawPlot);
             
+            // Event listener for "Show Data Table" button
             document.getElementById('showDataButton').addEventListener('click', () => {
+                if (fullDataTable.rows.length === 0) {
+                    showMessageModal("No Data", "Please plot a curve first to see the data table.");
+                    return;
+                }
                 populateDataTable();
                 document.getElementById('dataModal').style.display = 'block';
             });
-            
-            document.getElementById('copyDataButton').addEventListener('click', () => {
-                const copyButton = document.getElementById('copyDataButton');
-                navigator.clipboard.writeText(document.getElementById('dataTableContent').textContent).then(() => {
-                    copyButton.textContent = "Copied!";
-                    setTimeout(() => { copyButton.textContent = "Copy to Clipboard"; }, 2000);
-                });
+
+            // Event listener for "Show Derivation" button
+            document.getElementById('showDerivationButton').addEventListener('click', () => {
+                document.getElementById('derivationModal').style.display = 'block';
+                // Re-render math in the modal content if it's dynamically loaded or hidden/shown
+                renderMathInElement(document.getElementById('derivationContent'));
             });
             
+            // Event listener for "Copy to Clipboard" button in data modal
+            document.getElementById('copyDataButton').addEventListener('click', () => {
+                const copyButton = document.getElementById('copyDataButton');
+                // Use execCommand for broader compatibility in iframes
+                const textArea = document.createElement('textarea');
+                textArea.value = document.getElementById('dataTableContent').textContent;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    copyButton.textContent = "Copied!";
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    copyButton.textContent = "Copy Failed!";
+                }
+                document.body.removeChild(textArea);
+                setTimeout(() => { copyButton.textContent = "Copy to Clipboard"; }, 2000);
+            });
+            
+            // Event listeners for help icons to show help modal
             document.querySelectorAll('.help-icon').forEach(icon => {
                 icon.addEventListener('click', (e) => {
                     const info = paramExplanations[e.target.dataset.param];
@@ -674,12 +1041,14 @@
                 });
             });
 
+            // Event listeners for close buttons on all modals
             document.querySelectorAll('.close-button').forEach(button => {
                 button.addEventListener('click', (e) => {
                     document.getElementById(e.target.dataset.modalId).style.display = 'none';
                 });
             });
             
+            // Close modal when clicking outside the modal content
             window.addEventListener('click', (e) => {
                 if (e.target.classList.contains('modal')) {
                     e.target.style.display = 'none';
