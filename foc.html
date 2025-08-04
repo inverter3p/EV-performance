@@ -301,11 +301,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const SQRT3 = Math.sqrt(3);
     const PLOT_POINTS = 500;
     const DT = 0.0001;
-    const ANIMATION_SPEED_SCALE = 0.20; // Display speed is 5% of real speed
+    const ANIMATION_SPEED_SCALE = 0.05; // Display speed is 5% of real speed
 
     // --- Simulation State ---
     let isRunning = false;
     let animationFrameId;
+    let resizeTimer;
 
     // --- Motor & Control Parameters ---
     let params = {};
@@ -378,10 +379,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Animation ---
     const motorCanvas = document.getElementById('motor-animation-canvas');
     const motorCtx = motorCanvas.getContext('2d');
+
+    function setupAnimationCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = motorCanvas.getBoundingClientRect();
+        motorCanvas.width = rect.width * dpr;
+        motorCanvas.height = rect.height * dpr;
+        motorCtx.scale(dpr, dpr);
+    }
+
     function drawMotor() {
-        const w = motorCanvas.width, h = motorCanvas.height, cx = w / 2, cy = h / 2;
+        const w = motorCanvas.clientWidth;
+        const h = motorCanvas.clientHeight;
+        
+        // Correctly clear the scaled canvas
+        motorCtx.save();
+        motorCtx.setTransform(1, 0, 0, 1, 0, 0);
+        motorCtx.clearRect(0, 0, motorCanvas.width, motorCanvas.height);
+        motorCtx.restore();
+        
+        const cx = w / 2, cy = h / 2;
         const statorRadius = Math.min(cx, cy) * 0.9, rotorRadius = statorRadius * 0.6, phasorScale = 15;
-        motorCtx.clearRect(0, 0, w, h);
         
         // Draw Stator
         motorCtx.strokeStyle = '#333'; motorCtx.lineWidth = 10;
@@ -590,6 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateParameterDisplay();
         Object.keys(plotData).forEach(key => plotData[key] = []);
         initPlots();
+        setupAnimationCanvas(); // Recalculate canvas size on reset
         drawMotor();
         startStopBtn.textContent = 'Start';
         startStopBtn.classList.remove('running');
@@ -641,9 +660,18 @@ document.addEventListener('DOMContentLoaded', () => {
     linkSliderAndInput(uiControls.iqKp, 'iq_kp', true);
     linkSliderAndInput(uiControls.iqKi, 'iq_ki', true);
 
-    fullReset(); // Start with a clean slate
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            setupAnimationCanvas();
+            Object.values(charts).forEach(chart => chart.resize());
+        }, 250);
+    });
+
+    window.onload = () => {
+        fullReset(); // Start with a clean slate after the page is fully loaded
+    };
 });
 </script>
 </body>
 </html>
-
