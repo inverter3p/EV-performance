@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const SQRT3 = Math.sqrt(3);
     const PLOT_POINTS = 500;
     const DT = 0.0001;
-    const ANIMATION_SPEED_SCALE = 0.2; // Display speed is 5% of real speed
+    const ANIMATION_SPEED_SCALE = 0.05; // Display speed is 5% of real speed
 
     // --- Simulation State ---
     let isRunning = false;
@@ -391,8 +391,19 @@ document.addEventListener('DOMContentLoaded', () => {
         motorCtx.save();
         motorCtx.translate(cx, cy);
         motorCtx.rotate(params.animation_theta_mech); // Use scaled angle for animation
-        motorCtx.fillStyle = 'red'; motorCtx.beginPath(); motorCtx.arc(0, 0, rotorRadius, -PI/2, PI/2); motorCtx.fill();
-        motorCtx.fillStyle = 'blue'; motorCtx.beginPath(); motorCtx.arc(0, 0, rotorRadius, PI/2, -PI/2); motorCtx.fill();
+        
+        const polePairs = params.P;
+        const totalPoles = 2 * polePairs;
+        const segmentAngle = 2 * PI / totalPoles;
+
+        for (let i = 0; i < totalPoles; i++) {
+            motorCtx.fillStyle = (i % 2 === 0) ? 'red' : 'blue'; // Alternating North/South
+            motorCtx.beginPath();
+            motorCtx.moveTo(0, 0);
+            motorCtx.arc(0, 0, rotorRadius, i * segmentAngle - (PI/2), (i + 1) * segmentAngle - (PI/2));
+            motorCtx.closePath();
+            motorCtx.fill();
+        }
         motorCtx.restore();
         
         // Draw d-q frame and vectors
