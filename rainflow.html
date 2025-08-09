@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainflow Counting Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .prose { max-width: none; }
+        .tooltip { position: relative; display: inline-block; }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-container { transition: transform 0.3s ease; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Rainflow Counting and Life Estimation Tool</h1>
+            <p class="mt-2 text-md text-gray-600">Analyze thermal cycles for power devices, batteries, and more.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Input Section -->
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800">1. Input Data</h2>
+                <div class="mb-6">
+                    <label for="dataInput" class="block text-sm font-medium text-gray-700 mb-2">Paste Time-Series Data (CSV or Turning Points)</label>
+                    <textarea id="dataInput" rows="10" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" placeholder="Example:&#10;100&#10;150&#10;80&#10;160&#10;70&#10;150&#10;100"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Enter one value per line for turning points, or two columns (time, value) for full time-series.</p>
+                </div>
+                <div class="mb-4">
+                    <label for="lifeModelInput" class="block text-sm font-medium text-gray-700 mb-2">
+                        Physics of Failure (PoF) Life Model 
+                        <span class="tooltip text-gray-500 font-normal">(?)
+                            <span class="tooltiptext">Enter a JavaScript function. Use 'S' for cycle amplitude (range) and 'Sm' for mean value. E.g., a Coffin-Manson model: 1000 * Math.pow(S, -2.5)</span>
+                        </span>
+                    </label>
+                    <input type="text" id="lifeModelInput" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" value="5000 * Math.pow(S, -2.2)">
+                </div>
+                <button id="calculateBtn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">Analyze Cycles</button>
+            </div>
+
+            <!-- Output Section -->
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800">2. Analysis Results</h2>
+                <div id="results-container" class="hidden">
+                    <div class="mb-6">
+                        <h3 class="text-lg font-medium text-gray-700 mb-2">Input Data and Rainflow Paths</h3>
+                        <canvas id="inputDataChart"></canvas>
+                    </div>
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-2">
+                             <h3 class="text-lg font-medium text-gray-700">Rainflow Cycle Counts</h3>
+                             <button id="openRainflowModalBtn" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">What is this?</button>
+                        </div>
+                        <div class="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amplitude (S)</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mean (Sm)</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count (n)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rainflowTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-lg font-medium text-gray-700">Life Estimation</h3>
+                            <button id="openLifeModalBtn" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold">How is this calculated?</button>
+                        </div>
+                        <div id="lifeEstimationResult" class="bg-indigo-50 p-4 rounded-lg text-center mb-6"></div>
+                        <canvas id="lifeModelChart"></canvas>
+                    </div>
+                </div>
+                 <div id="placeholder-container" class="text-center py-10">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No analysis performed yet</h3>
+                    <p class="mt-1 text-sm text-gray-500">Enter your data and click "Analyze Cycles".</p>
+                </div>
+                <div id="error-message" class="hidden mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="rainflowModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden"><div class="modal-overlay fixed inset-0 bg-black bg-opacity-50"></div><div class="modal-container bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto z-10 transform scale-95"><div class="p-6"><div class="flex justify-between items-start"><h2 class="text-xl font-bold text-gray-900">The Rainflow Counting Rule</h2><button class="close-modal-btn text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="mt-4 prose-sm text-gray-600"><p>Rainflow counting breaks down a complex load history into simple, countable stress cycles for fatigue analysis. It works by applying a three-point rule:</p><ol class="list-decimal pl-5 space-y-2"><li><strong>Identify Cycle:</strong> Look at three consecutive peaks/valleys (A, B, C). A <strong>full cycle</strong> is counted from A to B if the range of B-C is greater than or equal to the range of A-B.</li><li><strong>Remove & Repeat:</strong> When a full cycle is counted, points A and B are removed, and the analysis continues.</li><li><strong>Residue:</strong> Any points left at the end that don't form full cycles are counted as <strong>half-cycles</strong>.</li></ol><div class="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg"><h4 class="font-semibold text-blue-800">On the Chart:</h4><ul class="list-disc pl-5"><li><strong class="text-green-600">Solid green lines</strong> represent full cycles.</li><li><strong class="text-yellow-600">Dashed yellow lines</strong> represent half-cycles.</li></ul></div></div></div></div></div>
+    <div id="lifeModelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden"><div class="modal-overlay fixed inset-0 bg-black bg-opacity-50"></div><div class="modal-container bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-auto z-10 transform scale-95"><div class="p-6"><div class="flex justify-between items-start"><h2 class="text-xl font-bold text-gray-900">Life Estimation with Miner's Rule</h2><button class="close-modal-btn text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div id="lifeModalContent" class="mt-4 prose text-gray-600 space-y-4"></div></div></div></div>
+
+    <script>
+        // --- Global cache & chart instances ---
+        let lastAnalysisResults = {};
+        let inputChart = null;
+        let lifeChart = null;
+
+        // --- DOM Elements ---
+        const dataInput = document.getElementById('dataInput');
+        const lifeModelInput = document.getElementById('lifeModelInput');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const resultsContainer = document.getElementById('results-container');
+        const placeholderContainer = document.getElementById('placeholder-container');
+        const rainflowTableBody = document.getElementById('rainflowTableBody');
+        const lifeEstimationResult = document.getElementById('lifeEstimationResult');
+        const errorMessage = document.getElementById('error-message');
+        const inputChartCanvas = document.getElementById('inputDataChart');
+        const lifeChartCanvas = document.getElementById('lifeModelChart');
+
+        // --- Modal Elements ---
+        const rainflowModal = document.getElementById('rainflowModal');
+        const lifeModelModal = document.getElementById('lifeModelModal');
+        const openRainflowModalBtn = document.getElementById('openRainflowModalBtn');
+        const openLifeModalBtn = document.getElementById('openLifeModalBtn');
+
+        // --- Event Listeners ---
+        calculateBtn.addEventListener('click', handleAnalysis);
+        openRainflowModalBtn.addEventListener('click', () => toggleModal(rainflowModal, true));
+        openLifeModalBtn.addEventListener('click', () => {
+            updateLifeModalContent();
+            toggleModal(lifeModelModal, true);
+        });
+        rainflowModal.querySelector('.close-modal-btn').addEventListener('click', () => toggleModal(rainflowModal, false));
+        rainflowModal.querySelector('.modal-overlay').addEventListener('click', () => toggleModal(rainflowModal, false));
+        lifeModelModal.querySelector('.close-modal-btn').addEventListener('click', () => toggleModal(lifeModelModal, false));
+        lifeModelModal.querySelector('.modal-overlay').addEventListener('click', () => toggleModal(lifeModelModal, false));
+
+        function toggleModal(modalElement, show) {
+            if (!modalElement) return;
+            const overlay = modalElement.querySelector('.modal-overlay');
+            const container = modalElement.querySelector('.modal-container');
+            if (show) {
+                modalElement.classList.remove('hidden');
+                setTimeout(() => {
+                    overlay.classList.remove('opacity-0');
+                    container.classList.remove('scale-95');
+                }, 10);
+            } else {
+                overlay.classList.add('opacity-0');
+                container.classList.add('scale-95');
+                setTimeout(() => modalElement.classList.add('hidden'), 300);
+            }
+        }
+
+        function handleAnalysis() {
+            hideError();
+            try {
+                const rawData = parseInputData(dataInput.value);
+                if (rawData.length < 3) throw new Error("Please provide at least 3 data points for analysis.");
+                
+                const turningPoints = findTurningPoints(rawData);
+                const { cycles, paths } = rainflow(turningPoints);
+                
+                lastAnalysisResults = { cycles, paths, lifeModel: lifeModelInput.value };
+
+                updateInputDataChart(rawData, paths);
+                updateRainflowTable(cycles);
+                calculateLife(cycles, lifeModelInput.value);
+                updateLifeModelChart(cycles, lifeModelInput.value);
+                
+                resultsContainer.classList.remove('hidden');
+                placeholderContainer.classList.add('hidden');
+            } catch (error) {
+                showError(error.message);
+                lastAnalysisResults = {};
+                resultsContainer.classList.add('hidden');
+                placeholderContainer.classList.remove('hidden');
+            }
+        }
+
+        function parseInputData(text) {
+            const lines = text.trim().split('\n').filter(line => line.trim() !== '');
+            if (lines.length === 0) throw new Error("Input data is empty.");
+            return lines.map(line => {
+                const parts = line.split(/[\s,;]+/);
+                const value = parseFloat(parts.length > 1 ? parts[1] : parts[0]);
+                if (isNaN(value)) throw new Error(`Invalid number found in input: "${line}"`);
+                return value;
+            });
+        }
+
+        function findTurningPoints(data) {
+            if (data.length < 3) return data.map((value, index) => ({ value, index }));
+            const points = [{ value: data[0], index: 0 }];
+            for (let i = 1; i < data.length - 1; i++) {
+                const prev = data[i - 1], curr = data[i], next = data[i + 1];
+                if ((curr > prev && curr >= next) || (curr < prev && curr <= next)) {
+                     if (points[points.length - 1].value !== curr) {
+                        points.push({ value: curr, index: i });
+                    }
+                }
+            }
+            points.push({ value: data[data.length - 1], index: data.length - 1 });
+            return points;
+        }
+
+        function rainflow(points) {
+            const cycles = [], paths = [];
+            let S = [...points], T = [];
+            while (S.length > 0) {
+                T.push(S.shift());
+                while (T.length >= 3) {
+                    const Y = Math.abs(T[T.length - 2].value - T[T.length - 1].value);
+                    const X = Math.abs(T[T.length - 3].value - T[T.length - 2].value);
+                    if (X < Y) break;
+                    const p1 = T[T.length - 3], p2 = T[T.length - 2];
+                    cycles.push({ range: X, mean: (p1.value + p2.value) / 2, count: 1.0 });
+                    paths.push({ from: p1, to: p2, count: 1.0 });
+                    T.splice(T.length - 3, 1);
+                    T.splice(T.length - 2, 1);
+                }
+            }
+            while (T.length >= 2) {
+                const p1 = T[0], p2 = T[1];
+                cycles.push({ range: Math.abs(p1.value - p2.value), mean: (p1.value + p2.value) / 2, count: 0.5 });
+                paths.push({ from: p1, to: p2, count: 0.5 });
+                T.shift();
+            }
+            const consolidated = {};
+            cycles.forEach(({ range, mean, count }) => {
+                const key = `${range.toFixed(3)}-${mean.toFixed(3)}`;
+                if (!consolidated[key]) consolidated[key] = { range, mean, count: 0 };
+                consolidated[key].count += count;
+            });
+            return { cycles: Object.values(consolidated).sort((a,b) => b.range - a.range), paths: paths };
+        }
+
+        function calculateLife(cycles, modelString) {
+            let lifeModelFunc;
+            try { lifeModelFunc = new Function('S', 'Sm', `return ${modelString}`); } 
+            catch (e) { throw new Error("Invalid syntax in the Physics of Failure model."); }
+            let totalDamage = 0;
+            cycles.forEach(cycle => {
+                const S = cycle.range, Sm = cycle.mean;
+                let Nf;
+                try {
+                    Nf = lifeModelFunc(S, Sm);
+                    if (typeof Nf !== 'number' || !isFinite(Nf) || Nf <= 0) return;
+                } catch (e) { throw new Error(`Error executing life model: ${e.message}`); }
+                totalDamage += cycle.count / Nf;
+            });
+            lastAnalysisResults.totalDamage = totalDamage;
+            lifeEstimationResult.innerHTML = '';
+            if (totalDamage > 0) {
+                const estimatedLifeBlocks = 1 / totalDamage;
+                lifeEstimationResult.innerHTML = `<p class="text-gray-600">Total Damage per Block: <span class="font-semibold text-indigo-800">${totalDamage.toExponential(4)}</span></p><p class="mt-2 text-xl font-bold text-gray-900">Estimated Life: <span class="text-indigo-600">${estimatedLifeBlocks.toLocaleString(undefined, {maximumFractionDigits: 2})}</span> blocks</p><p class="text-xs text-gray-500 mt-1">A "block" is one run of the provided input data.</p>`;
+            } else {
+                lifeEstimationResult.innerHTML = `<p class="text-xl font-bold text-gray-900">Estimated Life: <span class="text-green-600">Effectively Infinite</span></p><p class="text-xs text-gray-500 mt-1">No damage calculated for the given cycles and model.</p>`;
+            }
+        }
+
+        function updateInputDataChart(data, paths) {
+            const labels = data.map((_, i) => i + 1);
+            const datasets = [{ label: 'Input Signal', data: data, borderColor: 'rgba(79, 70, 229, 0.5)', backgroundColor: 'rgba(79, 70, 229, 0.1)', borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: 'rgba(79, 70, 229, 1)', tension: 0.1, order: 1 }];
+            paths.forEach((path, i) => {
+                const pathData = new Array(data.length).fill(null);
+                pathData[path.from.index] = path.from.value;
+                pathData[path.to.index] = path.to.value;
+                const isFullCycle = path.count === 1.0;
+                const color = isFullCycle ? `rgba(22, 163, 74, 0.9)` : `rgba(234, 179, 8, 0.9)`;
+                datasets.push({ label: `Cycle ${i + 1}`, data: pathData, borderColor: color, borderWidth: 2, pointRadius: 4, pointBackgroundColor: color, tension: 0, borderDash: isFullCycle ? [] : [5, 5], fill: false, order: 0 });
+            });
+            if (inputChart) inputChart.destroy();
+            inputChart = new Chart(inputChartCanvas, { type: 'line', data: { labels, datasets }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, aspectRatio: 1.33, scales: { y: { title: { display: true, text: 'Data Point Index' } }, x: { title: { display: true, text: 'Value' } } }, plugins: { legend: { labels: { filter: (item) => item.datasetIndex === 0 } }, tooltip: { mode: 'index', intersect: false } } } });
+        }
+
+        function updateRainflowTable(cycles) {
+            rainflowTableBody.innerHTML = '';
+            if (cycles.length === 0) {
+                 rainflowTableBody.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-gray-500">No cycles were extracted.</td></tr>';
+                 return;
+            }
+            cycles.forEach(cycle => {
+                rainflowTableBody.innerHTML += `<tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${cycle.range.toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${cycle.mean.toFixed(2)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${cycle.count}</td></tr>`;
+            });
+        }
+        
+        function updateLifeModelChart(cycles, modelString) {
+            if (lifeChart) lifeChart.destroy();
+            
+            let lifeModelFunc;
+            try { lifeModelFunc = new Function('S', 'Sm', `return ${modelString}`); } 
+            catch (e) { return; }
+
+            const pointColors = ['#ef4444', '#f97316', '#84cc16', '#10b981', '#06b6d4', '#6366f1', '#d946ef', '#f43f5e'];
+            const datasets = [];
+
+            // 1. Create S-N curves for each unique mean stress
+            const usesMeanStress = modelString.includes('Sm');
+            const uniqueMeans = usesMeanStress ? [...new Set(cycles.map(c => c.mean))] : [0];
+            
+            const allRanges = cycles.map(c => c.range);
+            if (allRanges.length === 0) return;
+            const minRange = Math.min(...allRanges) * 0.9;
+            const maxRange = Math.max(...allRanges) * 1.1;
+
+            uniqueMeans.forEach((mean, index) => {
+                const lineData = [];
+                for (let i = 0; i < 100; i++) {
+                    const range = minRange + (maxRange - minRange) * (i / 99);
+                    const nf = lifeModelFunc(range, mean);
+                    if (nf > 0 && isFinite(nf)) lineData.push({ x: range, y: nf });
+                }
+                if (lineData.length > 0) {
+                    datasets.push({
+                        type: 'line',
+                        label: `Nf (Sm=${mean.toFixed(2)})`,
+                        data: lineData,
+                        borderColor: pointColors[index % pointColors.length],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        fill: false,
+                    });
+                }
+            });
+
+            // 2. Create scatter plot data for counted cycles
+            const scatterData = cycles.map((cycle, i) => ({
+                x: cycle.range,
+                y: lifeModelFunc(cycle.range, cycle.mean),
+                color: pointColors[i % pointColors.length]
+            }));
+            
+            datasets.push({
+                type: 'scatter',
+                label: 'Counted Cycles',
+                data: scatterData,
+                pointStyle: 'triangle',
+                radius: 8,
+                rotation: 0,
+                backgroundColor: scatterData.map(d => d.color),
+            });
+
+            lifeChart = new Chart(lifeChartCanvas, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { type: 'linear', position: 'bottom', title: { display: true, text: 'Cycle Amplitude (S)' } },
+                        y: { type: 'logarithmic', title: { display: true, text: 'Cycles to Failure (Nf)' } }
+                    },
+                    plugins: {
+                        legend: { labels: { usePointStyle: true } }, // Use point style in legend
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const sValue = context.parsed.x.toFixed(2);
+                                    const nValue = context.parsed.y.toExponential(2);
+                                    if (context.dataset.type === 'scatter') {
+                                        return `Cycle: S=${sValue}, Nf=${nValue}`;
+                                    }
+                                    return `${label}: S=${sValue}, Nf=${nValue}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateLifeModalContent() {
+            const { cycles, lifeModel, totalDamage } = lastAnalysisResults;
+            const lifeModalContent = document.getElementById('lifeModalContent');
+            if (!cycles || cycles.length === 0) {
+                lifeModalContent.innerHTML = `<p class="mt-4">Run an analysis first to see a detailed calculation.</p>`;
+                return;
+            }
+            let lifeModelFunc;
+            try { lifeModelFunc = new Function('S', 'Sm', `return ${lifeModel}`); } 
+            catch (e) { lifeModalContent.innerHTML = `<p class="text-red-600">Error in life model syntax.</p>`; return; }
+            let damageCalcs = '', damageSummation = [];
+            cycles.forEach((cycle, i) => {
+                const S = cycle.range, Sm = cycle.mean, n = cycle.count;
+                const Nf = lifeModelFunc(S, Sm);
+                const D = n / Nf;
+                damageSummation.push(D.toExponential(2));
+                damageCalcs += `<p class="text-center font-mono text-sm p-1">\\( D_{${i+1}} = \\frac{n_{${i+1}}}{N_{f_{${i+1}}}} = \\frac{${n}}{${Nf.toExponential(2)}} = ${D.toExponential(2)} \\)</p>`;
+            });
+            const content = `<div><h4 class="font-semibold">1. Calculate Damage for Each Cycle Type (\\(D_i\\))</h4><p class="text-sm">The damage from each cycle type is the ratio of its count (\\(n_i\\)) to the cycles to failure (\\(N_{f_i}\\)) from your life model.</p><div class="my-2 p-2 bg-gray-50 rounded-md overflow-x-auto">${damageCalcs}</div></div><div><h4 class="font-semibold">2. Sum Total Damage (\\(D_{total}\\))</h4><p class="text-sm">Total damage is the sum of the damage from all cycle types, according to Miner's Rule.</p><p class="text-center font-mono p-2 bg-gray-100 rounded-md my-2">\\( D_{total} = \\sum D_i = ${damageSummation.join(' + ')} = ${totalDamage.toExponential(4)} \\)</p></div><div><h4 class="font-semibold">3. Estimate Life in Blocks</h4><p class="text-sm">The component's life is the reciprocal of the total damage, as failure is predicted when \\(D_{total} = 1\\).</p><p class="text-center font-mono p-2 bg-gray-100 rounded-md my-2">\\( \\text{Life} = \\frac{1}{D_{total}} = \\frac{1}{${totalDamage.toExponential(4)}} \\approx ${ (1/totalDamage).toLocaleString(undefined, {maximumFractionDigits: 2})} \\text{ blocks} \\)</p></div>`;
+            lifeModalContent.innerHTML = content;
+            if (window.MathJax) { MathJax.typesetPromise(); }
+        }
+
+        function showError(msg) {
+            errorMessage.textContent = `Error: ${msg}`;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
