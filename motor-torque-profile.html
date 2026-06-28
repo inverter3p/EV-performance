@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motor Drive and Linear Motion Power Profile Plotter</title>
+
+  <!-- Plotly for professional interactive plots -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <!-- MathJax for LaTeX equation rendering -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    :root {
+      --bg: #f7f7f8;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --danger: #dc2626;
+      --shadow: 0 12px 30px rgba(0,0,0,0.06);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, #eef4ff 0, transparent 36rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 34px 22px 60px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 22px;
+    }
+
+    .hero, .panel, .plot-card, .tabs {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(229,231,235,0.8);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero { padding: 28px; }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 3vw, 3rem);
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.02rem;
+      max-width: 780px;
+    }
+
+    .equation {
+      margin-top: 20px;
+      padding: 18px 20px;
+      border-radius: 15px;
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      font-size: 1.08rem;
+      overflow-x: auto;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      margin-bottom: 22px;
+      width: fit-content;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      color: #4b5563;
+      border-radius: 999px;
+      padding: 10px 16px;
+      box-shadow: none;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 8px 18px rgba(37,99,235,0.22);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .summary {
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      background: #fcfcfd;
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-bottom: 4px;
+    }
+
+    .metric .value {
+      font-size: 1.35rem;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 390px 1fr;
+      gap: 22px;
+    }
+
+    .panel {
+      padding: 20px;
+      align-self: start;
+      position: sticky;
+      top: 18px;
+    }
+
+    .section-title {
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-weight: 760;
+      margin: 0 0 12px;
+    }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #374151;
+      font-size: 0.88rem;
+      font-weight: 650;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--text);
+      outline: none;
+      transition: border 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    input:focus, textarea:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 4px rgba(37,99,235,0.11);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 380px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f9fafb;
+      color: #4b5563;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      z-index: 1;
+    }
+
+    td:first-child, th:first-child { text-align: center; width: 44px; }
+
+    td input {
+      padding: 7px 8px;
+      border-radius: 9px;
+      text-align: right;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0 4px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 750;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 8px 18px rgba(37,99,235,0.22);
+    }
+
+    .secondary {
+      background: var(--accent-soft);
+      color: #1d4ed8;
+    }
+
+    .ghost {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 12px;
+    }
+
+    .plots {
+      display: grid;
+      gap: 22px;
+    }
+
+    .plot-card {
+      padding: 16px 16px 6px;
+      min-height: 360px;
+    }
+
+    .plot {
+      width: 100%;
+      height: 340px;
+    }
+
+    .csv-box { margin-top: 16px; }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.84rem;
+    }
+
+    @media (max-width: 980px) {
+      header, .grid { grid-template-columns: 1fr; }
+      .panel { position: static; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <section class="hero">
+        <h1>Motion Drive Profile Plotter</h1>
+        <p class="subtitle">
+          Compare rotary motor-drive dynamics and its linear-motion companion equation from an input motion profile.
+          The app estimates acceleration numerically, then calculates required effort and mechanical power.
+        </p>
+
+        <div class="equation">
+          $$ T_e(t)=T_L(t)+J\frac{d\omega(t)}{dt}+B_r\omega(t), \qquad
+          P_m(t)=T_e(t)\omega(t) $$
+          $$ F_e(t)=F_L(t)+m\frac{dv(t)}{dt}+B_l v(t), \qquad
+          P_l(t)=F_e(t)v(t) $$
+        </div>
+      </section>
+
+      <aside class="summary">
+        <div class="metric">
+          <div class="label" id="metricEffortLabel">Peak torque</div>
+          <div class="value" id="peakEffort">–</div>
+        </div>
+        <div class="metric">
+          <div class="label" id="metricPeakPowerLabel">Peak mechanical power</div>
+          <div class="value" id="peakPower">–</div>
+        </div>
+        <div class="metric">
+          <div class="label" id="metricAvgPowerLabel">Average mechanical power</div>
+          <div class="value" id="avgPower">–</div>
+        </div>
+        <div class="metric">
+          <div class="label" id="metricAccelLabel">Peak acceleration</div>
+          <div class="value" id="peakAccel">–</div>
+        </div>
+      </aside>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab-btn active" onclick="switchTab('rotary')">Rotary motor</button>
+      <button class="tab-btn" onclick="switchTab('linear')">Linear motion</button>
+    </nav>
+
+    <!-- ROTARY TAB -->
+    <section id="rotaryTab" class="tab-content active">
+      <main class="grid">
+        <aside class="panel">
+          <p class="section-title">Motor and load parameters</p>
+
+          <div class="inputs">
+            <label>
+              Inertia J [kg·m²]
+              <input id="J" type="number" step="0.0001" value="0.00087" />
+            </label>
+
+            <label>
+              Viscous Br [N·m·s/rad]
+              <input id="B" type="number" step="0.00001" value="0.0001" />
+            </label>
+
+            <label>
+              Default load TL [N·m]
+              <input id="TLdefault" type="number" step="0.1" value="2.0" />
+            </label>
+
+            <label>
+              Plot smoothing
+              <input id="smoothWindow" type="number" min="1" step="2" value="1" />
+            </label>
+          </div>
+
+          <p class="section-title">Speed profile table</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>t [s]</th>
+                  <th>ω [rad/s]</th>
+                  <th>TL [N·m]</th>
+                </tr>
+              </thead>
+              <tbody id="profileBody"></tbody>
+            </table>
+          </div>
+
+          <div class="btn-row">
+            <button class="primary" onclick="updateAll()">Plot</button>
+            <button class="secondary" onclick="addRotaryRow()">Add row</button>
+            <button class="ghost" onclick="loadRotaryExample()">Example</button>
+            <button class="danger" onclick="clearRotaryRows()">Clear</button>
+          </div>
+
+          <div class="csv-box">
+            <p class="section-title">Paste CSV data</p>
+            <textarea id="csvInput" placeholder="t,omega,TL&#10;0,0,2&#10;0.05,40,2&#10;0.10,90,2"></textarea>
+            <div class="btn-row">
+              <button class="secondary" onclick="importRotaryCSV()">Import CSV</button>
+              <button class="ghost" onclick="exportRotaryCSV()">Export CSV</button>
+            </div>
+          </div>
+
+          <p class="hint">
+            Notes: Use rad/s for speed. TL can be changed at each time point for load-step tests.
+            Derivative uses central difference for internal points and one-sided difference at endpoints.
+          </p>
+        </aside>
+
+        <section class="plots">
+          <article class="plot-card"><div id="speedPlot" class="plot"></div></article>
+          <article class="plot-card"><div id="torquePlot" class="plot"></div></article>
+          <article class="plot-card"><div id="powerPlot" class="plot"></div></article>
+        </section>
+      </main>
+    </section>
+
+    <!-- LINEAR TAB -->
+    <section id="linearTab" class="tab-content">
+      <main class="grid">
+        <aside class="panel">
+          <p class="section-title">Linear system and load parameters</p>
+
+          <div class="inputs">
+            <label>
+              Mass m [kg]
+              <input id="mLinear" type="number" step="0.1" value="100" />
+            </label>
+
+            <label>
+              Viscous Bl [N·s/m]
+              <input id="BLinear" type="number" step="0.1" value="20" />
+            </label>
+
+            <label>
+              Default load FL [N]
+              <input id="FLdefault" type="number" step="1" value="100" />
+            </label>
+
+            <label>
+              Plot smoothing
+              <input id="linearSmoothWindow" type="number" min="1" step="2" value="1" />
+            </label>
+          </div>
+
+          <p class="section-title">Velocity profile table</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>t [s]</th>
+                  <th>v [m/s]</th>
+                  <th>FL [N]</th>
+                </tr>
+              </thead>
+              <tbody id="linearProfileBody"></tbody>
+            </table>
+          </div>
+
+          <div class="btn-row">
+            <button class="primary" onclick="updateAll()">Plot</button>
+            <button class="secondary" onclick="addLinearRow()">Add row</button>
+            <button class="ghost" onclick="loadLinearExample()">Example</button>
+            <button class="danger" onclick="clearLinearRows()">Clear</button>
+          </div>
+
+          <div class="csv-box">
+            <p class="section-title">Paste CSV data</p>
+            <textarea id="linearCsvInput" placeholder="t,v,FL&#10;0,0,100&#10;1,2,100&#10;2,5,300"></textarea>
+            <div class="btn-row">
+              <button class="secondary" onclick="importLinearCSV()">Import CSV</button>
+              <button class="ghost" onclick="exportLinearCSV()">Export CSV</button>
+            </div>
+          </div>
+
+          <p class="hint">
+            Notes: Use m/s for velocity. FL can represent rolling resistance, slope force, external load,
+            cutting force, belt load, or any force that must be overcome by the actuator.
+          </p>
+        </aside>
+
+        <section class="plots">
+          <article class="plot-card"><div id="linearVelocityPlot" class="plot"></div></article>
+          <article class="plot-card"><div id="linearForcePlot" class="plot"></div></article>
+          <article class="plot-card"><div id="linearPowerPlot" class="plot"></div></article>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <script>
+    let activeTab = "rotary";
+
+    const profileBody = document.getElementById("profileBody");
+    const linearProfileBody = document.getElementById("linearProfileBody");
+
+    const rotaryExample = [
+      { t: 0.00, w: 0,   TL: 2.0 },
+      { t: 0.02, w: 15,  TL: 2.0 },
+      { t: 0.04, w: 40,  TL: 2.0 },
+      { t: 0.06, w: 75,  TL: 2.0 },
+      { t: 0.08, w: 110, TL: 2.0 },
+      { t: 0.10, w: 135, TL: 2.0 },
+      { t: 0.12, w: 150, TL: 2.0 },
+      { t: 0.18, w: 150, TL: 4.0 },
+      { t: 0.24, w: 150, TL: 4.0 },
+      { t: 0.30, w: 150, TL: 2.0 },
+      { t: 0.36, w: 120, TL: 2.0 },
+      { t: 0.42, w: 80,  TL: 2.0 },
+      { t: 0.48, w: 0,   TL: 2.0 }
+    ];
+
+    const linearExample = [
+      { t: 0.0, v: 0.0, FL: 100 },
+      { t: 0.5, v: 1.0, FL: 100 },
+      { t: 1.0, v: 2.5, FL: 100 },
+      { t: 1.5, v: 4.0, FL: 100 },
+      { t: 2.0, v: 5.0, FL: 100 },
+      { t: 3.0, v: 5.0, FL: 350 },
+      { t: 4.0, v: 5.0, FL: 350 },
+      { t: 5.0, v: 5.0, FL: 100 },
+      { t: 6.0, v: 3.0, FL: 100 },
+      { t: 7.0, v: 0.0, FL: 100 }
+    ];
+
+    function fmt(value, digits = 3) {
+      if (!Number.isFinite(value)) return "–";
+      const abs = Math.abs(value);
+      if (abs >= 1e6) return value.toExponential(2);
+      if (abs >= 1000) return value.toFixed(0);
+      if (abs >= 100) return value.toFixed(1);
+      if (abs >= 10) return value.toFixed(2);
+      return value.toFixed(digits);
+    }
+
+    function debounce(fn, wait) {
+      let id;
+      return (...args) => {
+        clearTimeout(id);
+        id = setTimeout(() => fn(...args), wait);
+      };
+    }
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+
+      if (tabName === "rotary") {
+        document.querySelectorAll(".tab-btn")[0].classList.add("active");
+        document.getElementById("rotaryTab").classList.add("active");
+      } else {
+        document.querySelectorAll(".tab-btn")[1].classList.add("active");
+        document.getElementById("linearTab").classList.add("active");
+      }
+
+      updateAll();
+      setTimeout(() => {
+        const ids = tabName === "rotary"
+          ? ["speedPlot", "torquePlot", "powerPlot"]
+          : ["linearVelocityPlot", "linearForcePlot", "linearPowerPlot"];
+        ids.forEach(id => Plotly.Plots.resize(id));
+      }, 60);
+    }
+
+    function addTableRow(tbody, values, defaults, updateCallback) {
+      const index = tbody.children.length + 1;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${index}</td>
+        <td><input type="number" step="0.001" value="${values.t ?? defaults.t}"></td>
+        <td><input type="number" step="0.001" value="${values.motion ?? defaults.motion}"></td>
+        <td><input type="number" step="0.1" value="${values.load ?? defaults.load}"></td>
+      `;
+      tbody.appendChild(tr);
+
+      tr.querySelectorAll("input").forEach(input => {
+        input.addEventListener("input", debounce(updateCallback, 150));
+      });
+    }
+
+    function addRotaryRow(data = null) {
+      addTableRow(
+        profileBody,
+        { t: data?.t, motion: data?.w, load: data?.TL },
+        { t: 0, motion: 0, load: Number(document.getElementById("TLdefault").value || 0) },
+        updateAll
+      );
+    }
+
+    function addLinearRow(data = null) {
+      addTableRow(
+        linearProfileBody,
+        { t: data?.t, motion: data?.v, load: data?.FL },
+        { t: 0, motion: 0, load: Number(document.getElementById("FLdefault").value || 0) },
+        updateAll
+      );
+    }
+
+    function clearRotaryRows() {
+      profileBody.innerHTML = "";
+      updateAll();
+    }
+
+    function clearLinearRows() {
+      linearProfileBody.innerHTML = "";
+      updateAll();
+    }
+
+    function loadRotaryExample() {
+      profileBody.innerHTML = "";
+      rotaryExample.forEach(row => addRotaryRow(row));
+      updateAll();
+    }
+
+    function loadLinearExample() {
+      linearProfileBody.innerHTML = "";
+      linearExample.forEach(row => addLinearRow(row));
+      updateAll();
+    }
+
+    function getRotaryData() {
+      return [...profileBody.querySelectorAll("tr")].map(tr => {
+        const inputs = tr.querySelectorAll("input");
+        return {
+          t: Number(inputs[0].value),
+          w: Number(inputs[1].value),
+          TL: Number(inputs[2].value)
+        };
+      }).filter(r =>
+        Number.isFinite(r.t) && Number.isFinite(r.w) && Number.isFinite(r.TL)
+      ).sort((a, b) => a.t - b.t);
+    }
+
+    function getLinearData() {
+      return [...linearProfileBody.querySelectorAll("tr")].map(tr => {
+        const inputs = tr.querySelectorAll("input");
+        return {
+          t: Number(inputs[0].value),
+          v: Number(inputs[1].value),
+          FL: Number(inputs[2].value)
+        };
+      }).filter(r =>
+        Number.isFinite(r.t) && Number.isFinite(r.v) && Number.isFinite(r.FL)
+      ).sort((a, b) => a.t - b.t);
+    }
+
+    function movingAverage(values, windowSize) {
+      const n = Math.max(1, Math.floor(windowSize));
+      if (n <= 1) return values.slice();
+
+      const half = Math.floor(n / 2);
+      return values.map((_, i) => {
+        let sum = 0;
+        let count = 0;
+        for (let k = i - half; k <= i + half; k++) {
+          if (k >= 0 && k < values.length) {
+            sum += values[k];
+            count++;
+          }
+        }
+        return sum / count;
+      });
+    }
+
+    function derivativeAt(raw, motion, i) {
+      if (i === 0) {
+        const dt = raw[1].t - raw[0].t;
+        return dt !== 0 ? (motion[1] - motion[0]) / dt : 0;
+      }
+
+      if (i === raw.length - 1) {
+        const dt = raw[i].t - raw[i - 1].t;
+        return dt !== 0 ? (motion[i] - motion[i - 1]) / dt : 0;
+      }
+
+      const dt = raw[i + 1].t - raw[i - 1].t;
+      return dt !== 0 ? (motion[i + 1] - motion[i - 1]) / dt : 0;
+    }
+
+    function computeRotary() {
+      const raw = getRotaryData();
+      const J = Number(document.getElementById("J").value);
+      const B = Number(document.getElementById("B").value);
+      const smoothWindow = Number(document.getElementById("smoothWindow").value || 1);
+
+      if (raw.length < 2 || !Number.isFinite(J) || !Number.isFinite(B)) return [];
+
+      const wSmoothed = movingAverage(raw.map(r => r.w), smoothWindow);
+
+      return raw.map((r, i) => {
+        const dwdt = derivativeAt(raw, wSmoothed, i);
+        const inertiaTorque = J * dwdt;
+        const viscousTorque = B * wSmoothed[i];
+        const Te = r.TL + inertiaTorque + viscousTorque;
+        const P = Te * wSmoothed[i];
+
+        return { t: r.t, w: wSmoothed[i], TL: r.TL, dwdt, inertiaTorque, viscousTorque, Te, P };
+      });
+    }
+
+    function computeLinear() {
+      const raw = getLinearData();
+      const m = Number(document.getElementById("mLinear").value);
+      const B = Number(document.getElementById("BLinear").value);
+      const smoothWindow = Number(document.getElementById("linearSmoothWindow").value || 1);
+
+      if (raw.length < 2 || !Number.isFinite(m) || !Number.isFinite(B)) return [];
+
+      const vSmoothed = movingAverage(raw.map(r => r.v), smoothWindow);
+
+      return raw.map((r, i) => {
+        const dvdt = derivativeAt(raw, vSmoothed, i);
+        const inertiaForce = m * dvdt;
+        const viscousForce = B * vSmoothed[i];
+        const Fe = r.FL + inertiaForce + viscousForce;
+        const P = Fe * vSmoothed[i];
+
+        return { t: r.t, v: vSmoothed[i], FL: r.FL, dvdt, inertiaForce, viscousForce, Fe, P };
+      });
+    }
+
+    function averagePower(data) {
+      if (data.length < 2) return 0;
+      let energy = 0;
+      for (let i = 1; i < data.length; i++) {
+        const dt = data[i].t - data[i - 1].t;
+        energy += 0.5 * (data[i].P + data[i - 1].P) * dt;
+      }
+      const totalTime = data[data.length - 1].t - data[0].t;
+      return totalTime > 0 ? energy / totalTime : 0;
+    }
+
+    function baseLayout(title, xTitle, yTitle) {
+      return {
+        title: { text: title, x: 0.03, font: { size: 20 } },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "#fbfbfc",
+        margin: { l: 74, r: 30, t: 60, b: 58 },
+        font: {
+          family: "Inter, Latin Modern Math, STIX Two Text, Cambria Math, serif",
+          size: 13,
+          color: "#202124"
+        },
+        xaxis: {
+          title: xTitle,
+          showgrid: true,
+          gridcolor: "#e5e7eb",
+          zerolinecolor: "#d1d5db",
+          linecolor: "#d1d5db",
+          mirror: true
+        },
+        yaxis: {
+          title: yTitle,
+          showgrid: true,
+          gridcolor: "#e5e7eb",
+          zerolinecolor: "#d1d5db",
+          linecolor: "#d1d5db",
+          mirror: true
+        },
+        hovermode: "x unified",
+        legend: {
+          orientation: "h",
+          x: 0.02,
+          y: 1.12,
+          bgcolor: "rgba(255,255,255,0)"
+        }
+      };
+    }
+
+    function lineTrace(x, y, name, dash = "solid") {
+      return {
+        type: "scatter",
+        mode: "lines+markers",
+        x,
+        y,
+        name,
+        line: { width: 2.6, shape: "spline", smoothing: 0.55, dash },
+        marker: { size: 5 },
+        hovertemplate: "%{y:.4g}<extra></extra>"
+      };
+    }
+
+    function clearMetrics() {
+      document.getElementById("peakEffort").textContent = "–";
+      document.getElementById("peakPower").textContent = "–";
+      document.getElementById("avgPower").textContent = "–";
+      document.getElementById("peakAccel").textContent = "–";
+    }
+
+    function updateRotary() {
+      const data = computeRotary();
+
+      document.getElementById("metricEffortLabel").textContent = "Peak torque";
+      document.getElementById("metricAccelLabel").textContent = "Peak angular acceleration";
+
+      if (data.length < 2) {
+        ["speedPlot", "torquePlot", "powerPlot"].forEach(id => Plotly.purge(id));
+        clearMetrics();
+        return;
+      }
+
+      const t = data.map(d => d.t);
+
+      Plotly.react("speedPlot", [
+        lineTrace(t, data.map(d => d.w), "ω")
+      ], baseLayout("Speed profile", "Time, t [s]", "Angular speed, ω [rad/s]"), { responsive: true, displaylogo: false });
+
+      Plotly.react("torquePlot", [
+        lineTrace(t, data.map(d => d.Te), "Te"),
+        lineTrace(t, data.map(d => d.TL), "TL", "dot"),
+        lineTrace(t, data.map(d => d.inertiaTorque), "J dω/dt", "dash"),
+        lineTrace(t, data.map(d => d.viscousTorque), "Brω", "dashdot")
+      ], baseLayout("Torque components", "Time, t [s]", "Torque [N·m]"), { responsive: true, displaylogo: false });
+
+      Plotly.react("powerPlot", [
+        lineTrace(t, data.map(d => d.P), "Pm = Teω")
+      ], baseLayout("Mechanical power", "Time, t [s]", "Power [W]"), { responsive: true, displaylogo: false });
+
+      const peakEffort = data.reduce((m, d) => Math.max(m, Math.abs(d.Te)), 0);
+      const peakPower = data.reduce((m, d) => Math.max(m, Math.abs(d.P)), 0);
+      const peakAccel = data.reduce((m, d) => Math.max(m, Math.abs(d.dwdt)), 0);
+      const avgP = averagePower(data);
+
+      document.getElementById("peakEffort").textContent = `${fmt(peakEffort)} N·m`;
+      document.getElementById("peakPower").textContent = `${fmt(peakPower)} W`;
+      document.getElementById("avgPower").textContent = `${fmt(avgP)} W`;
+      document.getElementById("peakAccel").textContent = `${fmt(peakAccel)} rad/s²`;
+    }
+
+    function updateLinear() {
+      const data = computeLinear();
+
+      document.getElementById("metricEffortLabel").textContent = "Peak force";
+      document.getElementById("metricAccelLabel").textContent = "Peak linear acceleration";
+
+      if (data.length < 2) {
+        ["linearVelocityPlot", "linearForcePlot", "linearPowerPlot"].forEach(id => Plotly.purge(id));
+        clearMetrics();
+        return;
+      }
+
+      const t = data.map(d => d.t);
+
+      Plotly.react("linearVelocityPlot", [
+        lineTrace(t, data.map(d => d.v), "v")
+      ], baseLayout("Velocity profile", "Time, t [s]", "Velocity, v [m/s]"), { responsive: true, displaylogo: false });
+
+      Plotly.react("linearForcePlot", [
+        lineTrace(t, data.map(d => d.Fe), "Fe"),
+        lineTrace(t, data.map(d => d.FL), "FL", "dot"),
+        lineTrace(t, data.map(d => d.inertiaForce), "m dv/dt", "dash"),
+        lineTrace(t, data.map(d => d.viscousForce), "Blv", "dashdot")
+      ], baseLayout("Force components", "Time, t [s]", "Force [N]"), { responsive: true, displaylogo: false });
+
+      Plotly.react("linearPowerPlot", [
+        lineTrace(t, data.map(d => d.P), "Pl = Fev")
+      ], baseLayout("Linear mechanical power", "Time, t [s]", "Power [W]"), { responsive: true, displaylogo: false });
+
+      const peakEffort = data.reduce((m, d) => Math.max(m, Math.abs(d.Fe)), 0);
+      const peakPower = data.reduce((m, d) => Math.max(m, Math.abs(d.P)), 0);
+      const peakAccel = data.reduce((m, d) => Math.max(m, Math.abs(d.dvdt)), 0);
+      const avgP = averagePower(data);
+
+      document.getElementById("peakEffort").textContent = `${fmt(peakEffort)} N`;
+      document.getElementById("peakPower").textContent = `${fmt(peakPower)} W`;
+      document.getElementById("avgPower").textContent = `${fmt(avgP)} W`;
+      document.getElementById("peakAccel").textContent = `${fmt(peakAccel)} m/s²`;
+    }
+
+    function updateAll() {
+      if (activeTab === "rotary") updateRotary();
+      else updateLinear();
+    }
+
+    function importRowsFromCSV(textareaId, tbody, addRowFn, fields) {
+      const text = document.getElementById(textareaId).value.trim();
+      if (!text) return;
+
+      const lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+      const rows = [];
+
+      lines.forEach((line, i) => {
+        if (i === 0 && /[a-zA-Z]/.test(line)) return;
+        const parts = line.split(/[,\t;]/).map(x => x.trim());
+        if (parts.length < 2) return;
+
+        const t = Number(parts[0]);
+        const motion = Number(parts[1]);
+        const load = Number(parts[2]);
+
+        if (Number.isFinite(t) && Number.isFinite(motion) && Number.isFinite(load)) {
+          if (fields.motion === "w") rows.push({ t, w: motion, TL: load });
+          else rows.push({ t, v: motion, FL: load });
+        }
+      });
+
+      if (rows.length > 0) {
+        tbody.innerHTML = "";
+        rows.forEach(row => addRowFn(row));
+        updateAll();
+      }
+    }
+
+    function importRotaryCSV() {
+      importRowsFromCSV("csvInput", profileBody, addRotaryRow, { motion: "w" });
+    }
+
+    function importLinearCSV() {
+      importRowsFromCSV("linearCsvInput", linearProfileBody, addLinearRow, { motion: "v" });
+    }
+
+    function exportRotaryCSV() {
+      const data = computeRotary();
+      const header = "t,omega,TL,dw_dt,Te,Power";
+      const lines = data.map(d =>
+        [d.t, d.w, d.TL, d.dwdt, d.Te, d.P].map(v => Number(v).toPrecision(8)).join(",")
+      );
+      document.getElementById("csvInput").value = [header, ...lines].join("\n");
+    }
+
+    function exportLinearCSV() {
+      const data = computeLinear();
+      const header = "t,v,FL,dv_dt,Fe,Power";
+      const lines = data.map(d =>
+        [d.t, d.v, d.FL, d.dvdt, d.Fe, d.P].map(v => Number(v).toPrecision(8)).join(",")
+      );
+      document.getElementById("linearCsvInput").value = [header, ...lines].join("\n");
+    }
+
+    ["J", "B", "TLdefault", "smoothWindow", "mLinear", "BLinear", "FLdefault", "linearSmoothWindow"].forEach(id => {
+      document.getElementById(id).addEventListener("input", debounce(updateAll, 150));
+    });
+
+    window.addEventListener("resize", debounce(() => {
+      [
+        "speedPlot", "torquePlot", "powerPlot",
+        "linearVelocityPlot", "linearForcePlot", "linearPowerPlot"
+      ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) Plotly.Plots.resize(id);
+      });
+    }, 100));
+
+    loadRotaryExample();
+    loadLinearExample();
+    switchTab("rotary");
+  </script>
+</body>
+</html>
