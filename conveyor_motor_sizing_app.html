@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Conveyor Motor Sizing App | Electric Drives</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['$', '$']] }, svg: { fontCache: 'global' } };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root{
+      --teal:#007b7a; --teal2:#e9fbfb; --orange:#f26b21; --ink:#1f2937;
+      --muted:#667085; --line:#d7e3e3; --bg:#f7fafb; --card:#ffffff;
+      --good:#0f9f6e; --warn:#f59e0b; --bad:#ef4444; --blue:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:'Anuphan', system-ui, sans-serif; color:var(--ink);
+      background:linear-gradient(180deg,#f8fbfc 0%,#eef7f7 100%);
+    }
+    header{
+      padding:28px 34px 18px; background:white; border-bottom:1px solid var(--line);
+      position:sticky; top:0; z-index:3;
+    }
+    .title{display:flex; align-items:flex-start; justify-content:space-between; gap:20px}
+    h1{font-size:30px; margin:0; letter-spacing:-.5px}
+    h1 span{color:var(--teal)}
+    .subtitle{margin-top:8px; color:var(--muted); font-size:15px}
+    .pill{border:1px solid var(--line); border-radius:999px; padding:8px 12px; font-size:13px; color:var(--teal); background:var(--teal2); white-space:nowrap}
+    main{padding:22px 34px 40px; max-width:1500px; margin:auto}
+    .grid{display:grid; grid-template-columns:410px 1fr; gap:18px; align-items:start}
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:0 8px 24px rgba(0,60,60,.06);
+      overflow:hidden;
+    }
+    .card h2{
+      font-size:18px; margin:0; padding:14px 16px; border-bottom:1px solid var(--line);
+      background:linear-gradient(90deg,var(--teal2),#fff); color:var(--teal);
+    }
+    .section{padding:15px 16px}
+    .row{display:grid; grid-template-columns:1fr 110px 72px; gap:8px; align-items:center; margin-bottom:9px}
+    label{font-size:13.2px; color:#344054}
+    input, select{
+      width:100%; padding:8px 10px; border:1px solid #cfdada; border-radius:10px; background:#fff;
+      font-family:inherit; font-size:13.5px;
+    }
+    .unit{font-size:12.5px; color:var(--muted)}
+    .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .hint{font-size:12.5px; color:var(--muted); line-height:1.55}
+    .buttons{display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 16px}
+    button{
+      border:0; border-radius:12px; padding:10px 13px; font-family:inherit; font-weight:600; cursor:pointer;
+      background:var(--teal); color:white; box-shadow:0 4px 12px rgba(0,123,122,.2)
+    }
+    button.secondary{background:#fff; color:var(--teal); border:1px solid var(--line); box-shadow:none}
+    button.orange{background:var(--orange)}
+    .tabs{display:flex; gap:8px; flex-wrap:wrap; padding:12px 12px 0}
+    .tab{background:#fff; color:var(--muted); border:1px solid var(--line); box-shadow:none; padding:8px 12px}
+    .tab.active{background:var(--teal); color:#fff}
+    .panel{display:none; padding:16px}
+    .panel.active{display:block}
+    .summary{
+      display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px
+    }
+    .metric{border:1px solid var(--line); border-radius:16px; padding:13px; background:#fff}
+    .metric .name{font-size:12.5px; color:var(--muted)}
+    .metric .val{font-size:24px; font-weight:700; margin-top:4px}
+    .metric .val.teal{color:var(--teal)} .metric .val.orange{color:var(--orange)}
+    .metric .sub{font-size:12px; color:var(--muted); margin-top:4px}
+    table{width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#fff}
+    th,td{padding:9px 10px; border-bottom:1px solid var(--line); font-size:13px; text-align:right}
+    th:first-child, td:first-child{text-align:left}
+    th{background:#f2f8f8; color:#0f5f5e; font-weight:700}
+    tr:last-child td{border-bottom:0}
+    .formula{background:#fbffff; border:1px solid var(--line); border-radius:14px; padding:13px; margin:8px 0; font-size:14px}
+    .canvasWrap{height:280px; border:1px solid var(--line); border-radius:16px; background:white; padding:8px}
+    canvas{width:100%; height:100%}
+    .warnbox{border-left:5px solid var(--orange); background:#fff7ed; padding:12px 14px; border-radius:12px; font-size:13px; color:#7c2d12; margin:10px 0}
+    .goodbox{border-left:5px solid var(--good); background:#ecfdf3; padding:12px 14px; border-radius:12px; font-size:13px; color:#064e3b; margin:10px 0}
+    .small{font-size:12.5px; color:var(--muted)}
+    .workflow{display:flex; gap:6px; flex-wrap:wrap}
+    .wf{padding:6px 9px; border-radius:999px; background:#eef8f8; border:1px solid var(--line); font-size:12px}
+    @media(max-width:1050px){.grid{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}}
+    @media print{
+      header{position:static}.grid{grid-template-columns:1fr} .buttons,.tabs{display:none}
+      body{background:white} .panel{display:block!important; page-break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <div>
+      <h1>Application หาขนาด <span>สายพานลำเลียง</span></h1>
+      <div class="subtitle">คำนวณแรงเชิงเส้น → แรงบิดที่ลูกกลิ้ง → อัตราทดเกียร์ → แรงบิดมอเตอร์ → กำลังมอเตอร์</div>
+    </div>
+    <div class="pill">Electric Drives | Hands-on Thinking</div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <aside class="card">
+      <h2>1) กำหนดโจทย์และข้อมูลระบบ</h2>
+      <div class="section">
+        <div class="row"><label>มวลรวมบนสายพาน \(m\)</label><input id="m" type="number" value="40" step="1"><div class="unit">kg</div></div>
+        <div class="row"><label>ความเร็วเป้าหมาย \(v\)</label><input id="v" type="number" value="0.6" step="0.05"><div class="unit">m/s</div></div>
+        <div class="row"><label>เวลาออกตัว \(t_{acc}\)</label><input id="tacc" type="number" value="1.0" step="0.1"><div class="unit">s</div></div>
+        <div class="row"><label>เวลาเบรก \(t_{br}\)</label><input id="tbr" type="number" value="0.2" step="0.05"><div class="unit">s</div></div>
+        <div class="row"><label>มุมเอียงสายพาน \(\theta\)</label><input id="theta" type="number" value="5" step="0.5"><div class="unit">deg</div></div>
+        <div class="row"><label>สัมประสิทธิ์เสียดทาน \(\mu\)</label><input id="mu" type="number" value="0.08" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>แรงต้านภายนอก \(F_A\)</label><input id="fa" type="number" value="25" step="1"><div class="unit">N</div></div>
+        <div class="row"><label>รัศมีลูกกลิ้งขับ \(r\)</label><input id="r" type="number" value="0.05" step="0.005"><div class="unit">m</div></div>
+        <div class="row"><label>ความเร็วพิกัดมอเตอร์ \(n_m\)</label><input id="nm" type="number" value="1450" step="50"><div class="unit">rpm</div></div>
+        <div class="row"><label>ประสิทธิภาพเกียร์ \(\eta_g\)</label><input id="etag" type="number" value="0.90" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>ประสิทธิภาพรวมมอเตอร์/ไดรฟ์ \(\eta_{sys}\)</label><input id="etas" type="number" value="0.90" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>Service factor</label><input id="sf" type="number" value="1.5" step="0.1"><div class="unit">x</div></div>
+        <div class="row"><label>เลือกอัตราทดเอง</label><input id="manualRatio" type="number" value="" placeholder="เว้นว่าง = auto" step="0.1"><div class="unit">:1</div></div>
+      </div>
+      <div class="buttons">
+        <button onclick="calc()">คำนวณใหม่</button>
+        <button class="secondary" onclick="loadExample('flat')">ตัวอย่างแนวราบ</button>
+        <button class="secondary" onclick="loadExample('incline')">ตัวอย่างทางเอียง</button>
+        <button class="orange" onclick="window.print()">พิมพ์/บันทึก PDF</button>
+      </div>
+      <div class="section">
+        <div class="workflow">
+          <span class="wf">ลักษณะงาน</span><span class="wf">คำนวณโหลด</span><span class="wf">เลือกมอเตอร์</span><span class="wf">เลือกเกียร์</span><span class="wf">เลือกไดรฟ์</span>
+        </div>
+      </div>
+    </aside>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('result',this)">ผลคำนวณ</button>
+        <button class="tab" onclick="showTab('force',this)">สมการแรง</button>
+        <button class="tab" onclick="showTab('motor',this)">มอเตอร์และเกียร์</button>
+        <button class="tab" onclick="showTab('plot',this)">กราฟโหลด</button>
+        <button class="tab" onclick="showTab('worksheet',this)">ใบงาน</button>
+      </div>
+
+      <div id="result" class="panel active">
+        <div class="summary">
+          <div class="metric"><div class="name">แรงขับช่วงออกตัว</div><div class="val orange" id="Facc">-</div><div class="sub">\(F_{drive,acc}\)</div></div>
+          <div class="metric"><div class="name">แรงขับเดินคงที่</div><div class="val teal" id="Frun">-</div><div class="sub">\(F_{drive,run}\)</div></div>
+          <div class="metric"><div class="name">แรงขับช่วงเบรก</div><div class="val" id="Fbr">-</div><div class="sub">ค่าลบ = ต้องเบรก</div></div>
+          <div class="metric"><div class="name">เลือกมอเตอร์อย่างน้อย</div><div class="val orange" id="Psel">-</div><div class="sub">รวมประสิทธิภาพ + service factor</div></div>
+        </div>
+        <table>
+          <thead><tr><th>ช่วงการทำงาน</th><th>ความเร่ง</th><th>แรงขับ</th><th>แรงบิดลูกกลิ้ง</th><th>กำลังที่โหลด</th><th>Quadrant</th></tr></thead>
+          <tbody id="stageTable"></tbody>
+        </table>
+        <div id="recommendation" class="goodbox"></div>
+        <div class="warnbox">
+          หมายเหตุ: แอปนี้เป็นเครื่องมือสอนและคำนวณเบื้องต้น ยังไม่รวมโมเมนต์ความเฉื่อยของลูกกลิ้ง/สายพาน, การกระชากตอนเริ่มเดิน, belt tension, thermal rating และมาตรฐานความปลอดภัยของเครื่องจักร
+        </div>
+      </div>
+
+      <div id="force" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">2) สมการแรงเชิงเส้นของสายพาน</h2>
+        <div class="formula">
+          \[
+          \sum F = F_{drive}-F_A-\mu mg\cos\theta - mg\sin\theta
+          = m\frac{dv}{dt}=ma
+          \]
+        </div>
+        <div class="two">
+          <div>
+            <table>
+              <tbody>
+                <tr><th>รายการ</th><th>ค่า</th></tr>
+                <tr><td>แรงเสียดทาน \(F_f=\mu mg\cos\theta\)</td><td id="Ffric"></td></tr>
+                <tr><td>แรงโน้มถ่วงตามแนวสายพาน \(F_s=mg\sin\theta\)</td><td id="Fslope"></td></tr>
+                <tr><td>แรงต้านรวม \(F_{resist}=F_A+F_f+F_s\)</td><td id="Fresist"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="formula">
+            ช่วงออกตัว:
+            \[
+            F_{drive,acc}=ma_{acc}+F_{resist}
+            \]
+            ช่วงเดินคงที่:
+            \[
+            F_{drive,run}=F_{resist}
+            \]
+            ช่วงเบรก:
+            \[
+            F_{drive,br}=ma_{br}+F_{resist}
+            \]
+          </div>
+        </div>
+      </div>
+
+      <div id="motor" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">3) แปลงแรงเชิงเส้นเป็นแรงบิดและเลือกเกียร์</h2>
+        <div class="formula">
+          \[
+          T_{drum}=F_{drive}r,\qquad
+          \omega_{drum}=\frac{v}{r},\qquad
+          n_{drum}=\omega_{drum}\frac{60}{2\pi}
+          \]
+          \[
+          i \approx \frac{n_m}{n_{drum}},\qquad
+          T_m=\frac{T_{drum}}{\eta_g i},\qquad
+          P_{motor} \ge \frac{P_{peak}}{\eta_{sys}}\times SF
+          \]
+        </div>
+        <div class="summary">
+          <div class="metric"><div class="name">ความเร็วลูกกลิ้ง</div><div class="val teal" id="ndrum">-</div><div class="sub">rpm</div></div>
+          <div class="metric"><div class="name">อัตราทดที่แนะนำ</div><div class="val orange" id="ratio">-</div><div class="sub">motor : drum</div></div>
+          <div class="metric"><div class="name">แรงบิดมอเตอร์ช่วงออกตัว</div><div class="val teal" id="Tmacc">-</div><div class="sub">N·m</div></div>
+          <div class="metric"><div class="name">แรงบิดมอเตอร์ช่วงเดินคงที่</div><div class="val teal" id="Tmrun">-</div><div class="sub">N·m</div></div>
+        </div>
+        <table>
+          <tbody>
+            <tr><th>รายการ</th><th>ผลลัพธ์</th></tr>
+            <tr><td>แรงบิดลูกกลิ้งสูงสุด</td><td id="TdrumMax"></td></tr>
+            <tr><td>กำลังโหลดสูงสุด</td><td id="Ppeak"></td></tr>
+            <tr><td>กำลังมอเตอร์ขั้นต่ำ</td><td id="Pmreq"></td></tr>
+            <tr><td>ขนาดมาตรฐานที่แนะนำ</td><td id="Pstd"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="plot" class="panel">
+        <div class="two">
+          <div>
+            <h2 style="padding:0 0 8px;background:none;border:0">กราฟความเร็ว</h2>
+            <div class="canvasWrap"><canvas id="speedCanvas"></canvas></div>
+          </div>
+          <div>
+            <h2 style="padding:0 0 8px;background:none;border:0">กราฟแรงขับ</h2>
+            <div class="canvasWrap"><canvas id="forceCanvas"></canvas></div>
+          </div>
+        </div>
+        <div class="small" style="margin-top:10px">กราฟสมมติช่วงออกตัว → เดินคงที่ 3 s → เบรก เพื่อช่วยให้ผู้เรียนเห็นแรงที่เปลี่ยนตาม motion profile</div>
+      </div>
+
+      <div id="worksheet" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">ใบงานสั้นสำหรับผู้เรียน</h2>
+        <table>
+          <tbody>
+            <tr><th>คำถาม</th><th>คำตอบของผู้เรียน</th></tr>
+            <tr><td>1. สายพานลำเลียงนี้เป็นโหลดแบบใด?</td><td>________________________________________</td></tr>
+            <tr><td>2. แรงต้านหลักมาจากอะไรบ้าง?</td><td>________________________________________</td></tr>
+            <tr><td>3. ช่วงใดต้องใช้แรงสูงสุด?</td><td>________________________________________</td></tr>
+            <tr><td>4. ถ้าเพิ่มมุมเอียง \(\theta\) จะเกิดอะไรกับกำลังมอเตอร์?</td><td>________________________________________</td></tr>
+            <tr><td>5. ถ้าอยากใช้มอเตอร์ 1450 rpm กับลูกกลิ้ง 115 rpm ต้องใช้อัตราทดประมาณเท่าไร?</td><td>________________________________________</td></tr>
+            <tr><td>6. ถ้า \(F_{drive,br}\) เป็นลบ หมายความว่าอะไร?</td><td>________________________________________</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const stdW = [25,40,60,90,120,150,180,250,370,550,750,1100,1500,2200,3000,4000,5500,7500,11000];
+
+function fmt(x, d=1){ return Number.isFinite(x) ? x.toFixed(d) : '-' }
+function showTab(id, btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  $(id).classList.add('active'); btn.classList.add('active');
+  if(id==='plot') setTimeout(drawPlots,50);
+}
+function vals(){
+  const v = id => parseFloat($(id).value)||0;
+  return {m:v('m'), v:v('v'), tacc:v('tacc'), tbr:v('tbr'), theta:v('theta')*Math.PI/180,
+    mu:v('mu'), fa:v('fa'), r:v('r'), nm:v('nm'), etag:v('etag'), etas:v('etas'), sf:v('sf'),
+    manualRatio: parseFloat($('manualRatio').value)};
+}
+let R = {};
+function calc(){
+  const x = vals(), g=9.81;
+  const aacc = x.v / x.tacc;
+  const abr = -x.v / x.tbr;
+  const Ff = x.mu*x.m*g*Math.cos(x.theta);
+  const Fs = x.m*g*Math.sin(x.theta);
+  const Fres = x.fa + Ff + Fs;
+  const Facc = x.m*aacc + Fres;
+  const Frun = Fres;
+  const Fbr = x.m*abr + Fres;
+  const wdrum = x.v / x.r;
+  const ndrum = wdrum * 60 / (2*Math.PI);
+  const ratioAuto = x.nm / ndrum;
+  const ratio = Number.isFinite(x.manualRatio) && x.manualRatio>0 ? x.manualRatio : ratioAuto;
+  const Tacc = Facc*x.r, Trun=Frun*x.r, Tbr=Fbr*x.r;
+  const Tmacc = Tacc/(x.etag*ratio), Tmrun=Trun/(x.etag*ratio), Tmbr=Tbr/(x.etag*ratio);
+  const Pacc = Facc*x.v, Prun=Frun*x.v, Pbr=Fbr*x.v;
+  const Ppeak = Math.max(Math.abs(Pacc),Math.abs(Prun),Math.abs(Pbr));
+  const Pmreq = Ppeak/x.etas*x.sf;
+  const Pstd = stdW.find(w=>w>=Pmreq) || Math.ceil(Pmreq/1000)*1000;
+  R = {x,aacc,abr,Ff,Fs,Fres,Facc,Frun,Fbr,wdrum,ndrum,ratio,Tacc,Trun,Tbr,Tmacc,Tmrun,Tmbr,Pacc,Prun,Pbr,Ppeak,Pmreq,Pstd};
+  $('Facc').innerHTML = fmt(Facc,1)+' N';
+  $('Frun').innerHTML = fmt(Frun,1)+' N';
+  $('Fbr').innerHTML = fmt(Fbr,1)+' N';
+  $('Psel').innerHTML = Pstd>=1000 ? fmt(Pstd/1000,2)+' kW' : fmt(Pstd,0)+' W';
+  $('Ffric').innerHTML = fmt(Ff,1)+' N';
+  $('Fslope').innerHTML = fmt(Fs,1)+' N';
+  $('Fresist').innerHTML = fmt(Fres,1)+' N';
+  $('ndrum').innerHTML = fmt(ndrum,1);
+  $('ratio').innerHTML = fmt(ratio,1)+':1';
+  $('Tmacc').innerHTML = fmt(Tmacc,2);
+  $('Tmrun').innerHTML = fmt(Tmrun,2);
+  $('TdrumMax').innerHTML = fmt(Math.max(Math.abs(Tacc),Math.abs(Trun),Math.abs(Tbr)),2)+' N·m';
+  $('Ppeak').innerHTML = fmt(Ppeak,1)+' W';
+  $('Pmreq').innerHTML = fmt(Pmreq,1)+' W';
+  $('Pstd').innerHTML = Pstd>=1000 ? fmt(Pstd/1000,2)+' kW' : fmt(Pstd,0)+' W';
+  $('stageTable').innerHTML = `
+    <tr><td>ออกตัว</td><td>${fmt(aacc,2)} m/s²</td><td>${fmt(Facc,1)} N</td><td>${fmt(Tacc,2)} N·m</td><td>${fmt(Pacc,1)} W</td><td>Q1 (+ω,+T)</td></tr>
+    <tr><td>เดินคงที่</td><td>0</td><td>${fmt(Frun,1)} N</td><td>${fmt(Trun,2)} N·m</td><td>${fmt(Prun,1)} W</td><td>Q1 (+ω,+T)</td></tr>
+    <tr><td>เบรก</td><td>${fmt(abr,2)} m/s²</td><td>${fmt(Fbr,1)} N</td><td>${fmt(Tbr,2)} N·m</td><td>${fmt(Pbr,1)} W</td><td>${Fbr<0?'Q2 (+ω,-T) เบรก/คืนพลังงาน':'Q1 ยังต้องขับอยู่'}</td></tr>`;
+  $('recommendation').innerHTML = `
+    <b>คำแนะนำเบื้องต้น:</b> เลือก geared motor ประมาณ <b>${Pstd>=1000?fmt(Pstd/1000,2)+' kW':fmt(Pstd,0)+' W'}</b>,
+    motor speed ≈ ${fmt(x.nm,0)} rpm, gear ratio ≈ <b>${fmt(ratio,1)}:1</b>.
+    แรงบิดที่ลูกกลิ้งต้องรองรับสูงสุด ≈ <b>${fmt(Math.max(Math.abs(Tacc),Math.abs(Trun),Math.abs(Tbr)),2)} N·m</b>.
+    ${Fbr<0?'ช่วงเบรกต้องมี torque ทิศตรงข้าม จึงควรพิจารณา drive ที่รองรับ braking หรือ regenerative braking.':''}`;
+  if(window.MathJax) MathJax.typesetPromise();
+  drawPlots();
+}
+function loadExample(type){
+  if(type==='flat'){
+    $('m').value=30; $('v').value=0.4; $('tacc').value=1.5; $('tbr').value=0.8; $('theta').value=0; $('mu').value=0.06; $('fa').value=15; $('r').value=0.04; $('nm').value=1450; $('etag').value=0.9; $('etas').value=0.88; $('sf').value=1.4; $('manualRatio').value='';
+  }else{
+    $('m').value=40; $('v').value=0.6; $('tacc').value=1.0; $('tbr').value=0.2; $('theta').value=5; $('mu').value=0.08; $('fa').value=25; $('r').value=0.05; $('nm').value=1450; $('etag').value=0.9; $('etas').value=0.9; $('sf').value=1.5; $('manualRatio').value='';
+  }
+  calc();
+}
+function drawLine(canvas, data, ylabel, color){
+  const c=$(canvas), ctx=c.getContext('2d'), w=c.width=c.clientWidth*2, h=c.height=c.clientHeight*2;
+  ctx.clearRect(0,0,w,h); ctx.scale(2,2);
+  const W=c.clientWidth,H=c.clientHeight, pad=38;
+  const xs=data.map(p=>p[0]), ys=data.map(p=>p[1]);
+  const xmin=Math.min(...xs), xmax=Math.max(...xs), ymin=Math.min(0,...ys), ymax=Math.max(...ys)*1.15 || 1;
+  const X=x=>pad+(x-xmin)/(xmax-xmin)*(W-pad*1.5);
+  const Y=y=>H-pad-(y-ymin)/(ymax-ymin)*(H-pad*1.6);
+  ctx.strokeStyle='#d7e3e3'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad,14); ctx.lineTo(pad,H-pad); ctx.lineTo(W-20,H-pad); ctx.stroke();
+  ctx.fillStyle='#667085'; ctx.font='12px Anuphan'; ctx.fillText('t (s)',W-55,H-12); ctx.fillText(ylabel,8,24);
+  ctx.strokeStyle=color; ctx.lineWidth=3; ctx.beginPath();
+  data.forEach((p,i)=>{ if(i===0)ctx.moveTo(X(p[0]),Y(p[1])); else ctx.lineTo(X(p[0]),Y(p[1])); });
+  ctx.stroke();
+  ctx.strokeStyle='#94a3b8'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(pad,Y(0)); ctx.lineTo(W-20,Y(0)); ctx.stroke(); ctx.setLineDash([]);
+}
+function drawPlots(){
+  if(!R.x) return;
+  const x=R.x, t1=x.tacc, t2=t1+3, t3=t2+x.tbr;
+  drawLine('speedCanvas', [[0,0],[t1,x.v],[t2,x.v],[t3,0]], 'v (m/s)', '#007b7a');
+  drawLine('forceCanvas', [[0,R.Facc],[t1,R.Facc],[t1,R.Frun],[t2,R.Frun],[t2,R.Fbr],[t3,R.Fbr]], 'Fdrive (N)', '#f26b21');
+}
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
+calc();
+</script>
+</body>
+</html>

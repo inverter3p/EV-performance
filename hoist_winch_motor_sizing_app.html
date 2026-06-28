@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crane / Winch Motor Sizing App | Electric Drives</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['$', '$']] }, svg: { fontCache: 'global' } };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root{
+      --teal:#007b7a; --teal2:#e9fbfb; --orange:#f26b21; --ink:#1f2937;
+      --muted:#667085; --line:#d7e3e3; --bg:#f7fafb; --card:#ffffff;
+      --good:#0f9f6e; --warn:#f59e0b; --bad:#ef4444; --blue:#2563eb;
+      --purple:#7c3aed;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:'Anuphan', system-ui, sans-serif; color:var(--ink);
+      background:linear-gradient(180deg,#f8fbfc 0%,#eef7f7 100%);
+    }
+    header{
+      padding:28px 34px 18px; background:white; border-bottom:1px solid var(--line);
+      position:sticky; top:0; z-index:3;
+    }
+    .title{display:flex; align-items:flex-start; justify-content:space-between; gap:20px}
+    h1{font-size:30px; margin:0; letter-spacing:-.5px}
+    h1 span{color:var(--teal)}
+    .subtitle{margin-top:8px; color:var(--muted); font-size:15px}
+    .pill{border:1px solid var(--line); border-radius:999px; padding:8px 12px; font-size:13px; color:var(--teal); background:var(--teal2); white-space:nowrap}
+    main{padding:22px 34px 40px; max-width:1500px; margin:auto}
+    .grid{display:grid; grid-template-columns:430px 1fr; gap:18px; align-items:start}
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:0 8px 24px rgba(0,60,60,.06);
+      overflow:hidden;
+    }
+    .card h2{
+      font-size:18px; margin:0; padding:14px 16px; border-bottom:1px solid var(--line);
+      background:linear-gradient(90deg,var(--teal2),#fff); color:var(--teal);
+    }
+    .section{padding:15px 16px}
+    .row{display:grid; grid-template-columns:1fr 110px 72px; gap:8px; align-items:center; margin-bottom:9px}
+    label{font-size:13.2px; color:#344054}
+    input, select{
+      width:100%; padding:8px 10px; border:1px solid #cfdada; border-radius:10px; background:#fff;
+      font-family:inherit; font-size:13.5px;
+    }
+    .unit{font-size:12.5px; color:var(--muted)}
+    .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .three{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+    .hint{font-size:12.5px; color:var(--muted); line-height:1.55}
+    .buttons{display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 16px}
+    button{
+      border:0; border-radius:12px; padding:10px 13px; font-family:inherit; font-weight:600; cursor:pointer;
+      background:var(--teal); color:white; box-shadow:0 4px 12px rgba(0,123,122,.2)
+    }
+    button.secondary{background:#fff; color:var(--teal); border:1px solid var(--line); box-shadow:none}
+    button.orange{background:var(--orange)}
+    .tabs{display:flex; gap:8px; flex-wrap:wrap; padding:12px 12px 0}
+    .tab{background:#fff; color:var(--muted); border:1px solid var(--line); box-shadow:none; padding:8px 12px}
+    .tab.active{background:var(--teal); color:#fff}
+    .panel{display:none; padding:16px}
+    .panel.active{display:block}
+    .summary{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px}
+    .metric{border:1px solid var(--line); border-radius:16px; padding:13px; background:#fff}
+    .metric .name{font-size:12.5px; color:var(--muted)}
+    .metric .val{font-size:24px; font-weight:700; margin-top:4px}
+    .metric .val.teal{color:var(--teal)} .metric .val.orange{color:var(--orange)} .metric .val.purple{color:var(--purple)}
+    .metric .sub{font-size:12px; color:var(--muted); margin-top:4px}
+    table{width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#fff}
+    th,td{padding:9px 10px; border-bottom:1px solid var(--line); font-size:13px; text-align:right; vertical-align:top}
+    th:first-child, td:first-child{text-align:left}
+    th{background:#f2f8f8; color:#0f5f5e; font-weight:700}
+    tr:last-child td{border-bottom:0}
+    .formula{background:#fbffff; border:1px solid var(--line); border-radius:14px; padding:13px; margin:8px 0; font-size:14px}
+    .canvasWrap{height:280px; border:1px solid var(--line); border-radius:16px; background:white; padding:8px}
+    canvas{width:100%; height:100%}
+    .warnbox{border-left:5px solid var(--orange); background:#fff7ed; padding:12px 14px; border-radius:12px; font-size:13px; color:#7c2d12; margin:10px 0; line-height:1.65}
+    .goodbox{border-left:5px solid var(--good); background:#ecfdf3; padding:12px 14px; border-radius:12px; font-size:13px; color:#064e3b; margin:10px 0; line-height:1.65}
+    .small{font-size:12.5px; color:var(--muted)}
+    .workflow{display:flex; gap:6px; flex-wrap:wrap}
+    .wf{padding:6px 9px; border-radius:999px; background:#eef8f8; border:1px solid var(--line); font-size:12px}
+    .quadGrid{display:grid; grid-template-columns:1fr 1fr; gap:6px; max-width:380px; margin:auto}
+    .quad{border:1px solid var(--line); border-radius:14px; padding:14px; text-align:center; min-height:90px; background:#fff}
+    .quad b{display:block; font-size:20px; margin-bottom:4px}
+    .q1{background:#ecfdf3}.q2{background:#eff6ff}.q3{background:#fff7ed}.q4{background:#f5f3ff}
+    @media(max-width:1050px){.grid{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}}
+    @media print{
+      header{position:static}.grid{grid-template-columns:1fr} .buttons,.tabs{display:none}
+      body{background:white} .panel{display:block!important; page-break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <div>
+      <h1>Application คำนวณขนาดมอเตอร์ <span>เครน / รอก / Winch</span></h1>
+      <div class="subtitle">คำนวณแรงยก → แรงบิดดรัม → อัตราทดเกียร์ → แรงบิดมอเตอร์ → กำลังมอเตอร์ พร้อมวิเคราะห์ lifting / lowering / braking quadrant</div>
+    </div>
+    <div class="pill">Electric Drives | Hoist Load Sizing</div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <aside class="card">
+      <h2>1) กำหนดโจทย์และข้อมูลระบบ</h2>
+      <div class="section">
+        <div class="row"><label>มวลของที่ยก \(m_L\)</label><input id="mload" type="number" value="100" step="5"><div class="unit">kg</div></div>
+        <div class="row"><label>มวลตะขอ/สลิง/บล็อก \(m_h\)</label><input id="mhook" type="number" value="10" step="1"><div class="unit">kg</div></div>
+        <div class="row"><label>ความเร็วการยก \(v\)</label><input id="v" type="number" value="0.25" step="0.01"><div class="unit">m/s</div></div>
+        <div class="row"><label>เวลาเร่งตอนยก \(t_{acc}\)</label><input id="tacc" type="number" value="0.7" step="0.1"><div class="unit">s</div></div>
+        <div class="row"><label>เวลาเบรกก่อนหยุด \(t_{br}\)</label><input id="tbr" type="number" value="0.5" step="0.1"><div class="unit">s</div></div>
+        <div class="row"><label>รัศมีดรัม \(r_d\)</label><input id="r" type="number" value="0.08" step="0.005"><div class="unit">m</div></div>
+        <div class="row"><label>จำนวนเส้นเชือกรับน้ำหนัก \(N_p\)</label><input id="parts" type="number" value="1" step="1"><div class="unit">part</div></div>
+        <div class="row"><label>แรงต้าน guide / bearing \(F_A\)</label><input id="fa" type="number" value="30" step="5"><div class="unit">N</div></div>
+        <div class="row"><label>ประสิทธิภาพรอก/เชือก \(\eta_p\)</label><input id="etap" type="number" value="0.95" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>ประสิทธิภาพเกียร์ \(\eta_g\)</label><input id="etag" type="number" value="0.90" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>ประสิทธิภาพมอเตอร์/ไดรฟ์ \(\eta_{sys}\)</label><input id="etas" type="number" value="0.90" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>ความเร็วพิกัดมอเตอร์ \(n_m\)</label><input id="nm" type="number" value="1450" step="50"><div class="unit">rpm</div></div>
+        <div class="row"><label>Service factor</label><input id="sf" type="number" value="1.8" step="0.1"><div class="unit">x</div></div>
+        <div class="row"><label>เลือกอัตราทดเอง</label><input id="manualRatio" type="number" value="" placeholder="เว้นว่าง = auto" step="0.1"><div class="unit">:1</div></div>
+      </div>
+      <div class="buttons">
+        <button onclick="calc()">คำนวณใหม่</button>
+        <button class="secondary" onclick="loadExample('light')">ตัวอย่างรอกเล็ก</button>
+        <button class="secondary" onclick="loadExample('crane')">ตัวอย่างเครน</button>
+        <button class="orange" onclick="window.print()">พิมพ์/บันทึก PDF</button>
+      </div>
+      <div class="section">
+        <div class="workflow">
+          <span class="wf">น้ำหนัก</span><span class="wf">ความเร็ว</span><span class="wf">แรงยก</span><span class="wf">แรงบิดดรัม</span><span class="wf">เกียร์</span><span class="wf">มอเตอร์</span><span class="wf">เบรก</span>
+        </div>
+      </div>
+    </aside>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('result',this)">ผลคำนวณ</button>
+        <button class="tab" onclick="showTab('force',this)">สมการแรง</button>
+        <button class="tab" onclick="showTab('motor',this)">มอเตอร์และเกียร์</button>
+        <button class="tab" onclick="showTab('quad',this)">Quadrant</button>
+        <button class="tab" onclick="showTab('plot',this)">กราฟโหลด</button>
+        <button class="tab" onclick="showTab('worksheet',this)">ใบงาน</button>
+      </div>
+
+      <div id="result" class="panel active">
+        <div class="summary">
+          <div class="metric"><div class="name">แรงยกช่วงเร่งขึ้น</div><div class="val orange" id="FupAcc">-</div><div class="sub">\(F_{lift,acc}\)</div></div>
+          <div class="metric"><div class="name">แรงยกคงที่</div><div class="val teal" id="FupRun">-</div><div class="sub">ประมาณน้ำหนัก + loss</div></div>
+          <div class="metric"><div class="name">แรงเบรกตอนลง</div><div class="val purple" id="TlowerRun">-</div><div class="sub">motor torque ขณะลดลง</div></div>
+          <div class="metric"><div class="name">เลือกมอเตอร์อย่างน้อย</div><div class="val orange" id="Psel">-</div><div class="sub">รวม efficiency + SF</div></div>
+        </div>
+        <table>
+          <thead><tr><th>ช่วงการทำงาน</th><th>ความเร็ว</th><th>ความเร่ง</th><th>แรงที่เชือก/โหลด</th><th>แรงบิดดรัม</th><th>กำลังเชิงกล</th><th>Quadrant</th></tr></thead>
+          <tbody id="stageTable"></tbody>
+        </table>
+        <div id="recommendation" class="goodbox"></div>
+        <div class="warnbox">
+          <b>ข้อควรระวังสำหรับงานยกของ:</b> ต้องเลือกมอเตอร์ร่วมกับ <b>เบรกกลไก</b>, safety factor, limit switch, overload protection และมาตรฐานความปลอดภัยของเครน/รอก แอปนี้ใช้เพื่อการเรียนและ preliminary sizing เท่านั้น
+        </div>
+      </div>
+
+      <div id="force" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">2) สมการแรงของรอก/Winch</h2>
+        <div class="formula">
+          กำหนดให้ทิศขึ้นเป็นบวก และ \(\omega>0\) คือหมุนเพื่อยกขึ้น
+          \[
+          F_{load} - mg - F_A = ma
+          \]
+          ดังนั้นแรงที่ต้องกระทำกับโหลดคือ
+          \[
+          F_{load}=m(g+a)+F_A
+          \]
+          ถ้ามีรอกหลายเส้นและมี loss:
+          \[
+          F_{rope}\approx \frac{F_{load}}{N_p\eta_p}
+          \]
+        </div>
+        <div class="two">
+          <table>
+            <tbody>
+              <tr><th>รายการ</th><th>ค่า</th></tr>
+              <tr><td>มวลรวม \(m=m_L+m_h\)</td><td id="mtotal"></td></tr>
+              <tr><td>น้ำหนัก \(mg\)</td><td id="weight"></td></tr>
+              <tr><td>ความเร่งยกขึ้น \(a_{up,acc}\)</td><td id="aupacc"></td></tr>
+              <tr><td>ความเร่งเบรกขณะยก \(a_{up,br}\)</td><td id="aupbr"></td></tr>
+              <tr><td>แรงเชือกต่อเส้นช่วงยกคงที่</td><td id="FropeRun"></td></tr>
+            </tbody>
+          </table>
+          <div class="formula">
+            ช่วงยกขึ้น:
+            \[
+            a>0 \Rightarrow F_{load}>mg
+            \]
+            ช่วงยกคงที่:
+            \[
+            a=0 \Rightarrow F_{load}\approx mg+F_A
+            \]
+            ช่วงลดลงคงที่:
+            \[
+            v<0,\ a=0
+            \]
+            มอเตอร์มักต้องสร้างแรงบิดทิศ “ยกขึ้น” เพื่อเบรก/คุมความเร็วของโหลด
+          </div>
+        </div>
+      </div>
+
+      <div id="motor" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">3) แปลงแรงเป็นแรงบิดดรัมและเลือกเกียร์</h2>
+        <div class="formula">
+          \[
+          T_{drum}=F_{rope}r_d,\qquad
+          \omega_{drum}=\frac{v_{rope}}{r_d},\qquad
+          n_{drum}=\omega_{drum}\frac{60}{2\pi}
+          \]
+          สำหรับรอกหลายเส้น \(v_{rope}\approx N_pv_{load}\)
+          \[
+          i\approx\frac{n_m}{n_{drum}},\qquad
+          T_m=\frac{T_{drum}}{\eta_g i},\qquad
+          P_{motor}\ge \frac{P_{peak}}{\eta_{sys}}SF
+          \]
+        </div>
+        <div class="summary">
+          <div class="metric"><div class="name">ความเร็วดรัม</div><div class="val teal" id="ndrum">-</div><div class="sub">rpm</div></div>
+          <div class="metric"><div class="name">อัตราทดที่แนะนำ</div><div class="val orange" id="ratio">-</div><div class="sub">motor : drum</div></div>
+          <div class="metric"><div class="name">แรงบิดมอเตอร์ช่วงยกเร่ง</div><div class="val teal" id="TmUpAcc">-</div><div class="sub">N·m</div></div>
+          <div class="metric"><div class="name">แรงบิดมอเตอร์ช่วงยกคงที่</div><div class="val teal" id="TmUpRun">-</div><div class="sub">N·m</div></div>
+        </div>
+        <table>
+          <tbody>
+            <tr><th>รายการ</th><th>ผลลัพธ์</th></tr>
+            <tr><td>แรงบิดดรัมสูงสุด</td><td id="TdrumMax"></td></tr>
+            <tr><td>กำลังยกคงที่ที่โหลด</td><td id="Prun"></td></tr>
+            <tr><td>กำลังโหลดสูงสุด</td><td id="Ppeak"></td></tr>
+            <tr><td>กำลังมอเตอร์ขั้นต่ำ</td><td id="Pmreq"></td></tr>
+            <tr><td>ขนาดมาตรฐานที่แนะนำ</td><td id="Pstd"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="quad" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">4) ทิศทางการทำงานผ่าน Quadrant</h2>
+        <div class="two">
+          <div class="quadGrid">
+            <div class="quad q4"><b>Q4</b>\(-\omega,+T\)<br>ลดลง + เบรก/คืนพลังงาน<br><span class="small">Reverse braking / regeneration</span></div>
+            <div class="quad q1"><b>Q1</b>\(+\omega,+T\)<br>ยกขึ้น + ขับเคลื่อน<br><span class="small">Forward motoring</span></div>
+            <div class="quad q3"><b>Q3</b>\(-\omega,-T\)<br>ลดลง + ขับเคลื่อน<br><span class="small">Reverse motoring</span></div>
+            <div class="quad q2"><b>Q2</b>\(+\omega,-T\)<br>ยกขึ้น + เบรก/คืนพลังงาน<br><span class="small">Forward braking</span></div>
+          </div>
+          <div>
+            <div class="formula">
+              สำหรับรอกยกของทั่วไป ถ้ากำหนด “ยกขึ้น” เป็น \(\omega>0\)
+              <ul>
+                <li>ยกขึ้นด้วยมอเตอร์: \(+\omega,+T\) → Q1</li>
+                <li>ยกขึ้นแล้วลดความเร็ว/หยุด: \(+\omega,-T\) ได้ถ้าต้องเบรกแรง → Q2</li>
+                <li>ลดของลงแบบควบคุมความเร็ว: \(-\omega,+T\) → Q4 เพราะมอเตอร์ออกแรงต้านน้ำหนัก</li>
+                <li>ลดของลงแบบมอเตอร์ช่วยดึงลง: \(-\omega,-T\) → Q3 พบได้บางกรณี</li>
+              </ul>
+            </div>
+            <div class="warnbox">
+              งานยกของมักเป็น <b>โหลดแรงบิดเกือบคงที่</b> เพราะแรงหลักมาจากน้ำหนัก \(mg\) และรัศมีดรัม \(r_d\) จึง \(T\approx mgr_d\) แต่ในช่วงออกตัว/เบรกจะมี torque เพิ่มจาก \(ma\) และ inertia ของดรัม/เกียร์
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="plot" class="panel">
+        <div class="two">
+          <div>
+            <h2 style="padding:0 0 8px;background:none;border:0">กราฟความเร็วโหลด</h2>
+            <div class="canvasWrap"><canvas id="speedCanvas"></canvas></div>
+          </div>
+          <div>
+            <h2 style="padding:0 0 8px;background:none;border:0">กราฟแรงบิดมอเตอร์</h2>
+            <div class="canvasWrap"><canvas id="torqueCanvas"></canvas></div>
+          </div>
+        </div>
+        <div class="small" style="margin-top:10px">กราฟสมมติ: ยกขึ้น → เดินคงที่ → เบรกหยุด → ลดลงคงที่ เพื่อให้เห็นเครื่องหมายของ \(\omega\) และ \(T\)</div>
+      </div>
+
+      <div id="worksheet" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">ใบงานสั้นสำหรับผู้เรียน</h2>
+        <table>
+          <tbody>
+            <tr><th>คำถาม</th><th>คำตอบของผู้เรียน</th></tr>
+            <tr><td>1. งานรอกยกของเป็นโหลดแรงบิดคงที่หรือโหลดพัดลม?</td><td>________________________________________</td></tr>
+            <tr><td>2. ทำไมช่วงออกตัวต้องใช้แรงมากกว่าช่วงยกคงที่?</td><td>________________________________________</td></tr>
+            <tr><td>3. ถ้าต้องยกของเร็วขึ้น 2 เท่า กำลังจะเปลี่ยนอย่างไร?</td><td>________________________________________</td></tr>
+            <tr><td>4. ถ้าเพิ่มรัศมีดรัม \(r_d\) แรงบิดดรัมจะเปลี่ยนอย่างไร?</td><td>________________________________________</td></tr>
+            <tr><td>5. ตอนลดของลงแบบคุมความเร็วอยู่ quadrant ใด?</td><td>________________________________________</td></tr>
+            <tr><td>6. ระบบนี้ต้องมี mechanical brake หรือไม่ เพราะอะไร?</td><td>________________________________________</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const stdW = [25,40,60,90,120,150,180,250,370,550,750,1100,1500,2200,3000,4000,5500,7500,11000,15000,18500,22000,30000];
+
+function fmt(x, d=1){ return Number.isFinite(x) ? x.toFixed(d) : '-' }
+function showTab(id, btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  $(id).classList.add('active'); btn.classList.add('active');
+  if(id==='plot') setTimeout(drawPlots,50);
+}
+function vals(){
+  const v = id => parseFloat($(id).value)||0;
+  return {
+    mload:v('mload'), mhook:v('mhook'), v:v('v'), tacc:v('tacc'), tbr:v('tbr'),
+    r:v('r'), parts:Math.max(1, v('parts')), fa:v('fa'), etap:v('etap'), etag:v('etag'),
+    etas:v('etas'), nm:v('nm'), sf:v('sf'), manualRatio: parseFloat($('manualRatio').value)
+  };
+}
+let R = {};
+function calc(){
+  const x = vals(), g=9.81;
+  const m = x.mload + x.mhook;
+  const aUpAcc = x.v / x.tacc;
+  const aUpBr = -x.v / x.tbr;
+  const aDownRun = 0;
+  const FloadUpAcc = m*(g + aUpAcc) + x.fa;
+  const FloadUpRun = m*g + x.fa;
+  const FloadUpBr = m*(g + aUpBr) + x.fa;
+  const FloadDownRun = m*g + x.fa; // tension upward to control constant-speed lowering
+  const FropeUpAcc = FloadUpAcc/(x.parts*x.etap);
+  const FropeUpRun = FloadUpRun/(x.parts*x.etap);
+  const FropeUpBr = FloadUpBr/(x.parts*x.etap);
+  const FropeDownRun = FloadDownRun/(x.parts*x.etap);
+  const vRope = x.parts*x.v;
+  const wdrum = vRope / x.r;
+  const ndrum = wdrum * 60 / (2*Math.PI);
+  const ratioAuto = x.nm / ndrum;
+  const ratio = Number.isFinite(x.manualRatio) && x.manualRatio>0 ? x.manualRatio : ratioAuto;
+  const TdrumUpAcc = FropeUpAcc*x.r;
+  const TdrumUpRun = FropeUpRun*x.r;
+  const TdrumUpBr = FropeUpBr*x.r;
+  const TdrumDownRun = FropeDownRun*x.r;
+  const TmUpAcc = TdrumUpAcc/(x.etag*ratio);
+  const TmUpRun = TdrumUpRun/(x.etag*ratio);
+  const TmUpBr = TdrumUpBr/(x.etag*ratio);
+  const TmDownRun = TdrumDownRun/(x.etag*ratio); // positive torque, negative speed -> Q4
+  const PupAcc = FloadUpAcc*x.v;
+  const PupRun = FloadUpRun*x.v;
+  const PupBr = FloadUpBr*x.v;
+  const PdownRun = -FloadDownRun*x.v; // mechanical sign; magnitude could be regenerated/dissipated
+  const Ppeak = Math.max(Math.abs(PupAcc),Math.abs(PupRun),Math.abs(PupBr),Math.abs(PdownRun));
+  const Pmreq = Ppeak/x.etas*x.sf;
+  const Pstd = stdW.find(w=>w>=Pmreq) || Math.ceil(Pmreq/1000)*1000;
+  R = {x,m,g,aUpAcc,aUpBr,FloadUpAcc,FloadUpRun,FloadUpBr,FloadDownRun,FropeUpAcc,FropeUpRun,FropeUpBr,FropeDownRun,
+       wdrum,ndrum,ratio,TdrumUpAcc,TdrumUpRun,TdrumUpBr,TdrumDownRun,TmUpAcc,TmUpRun,TmUpBr,TmDownRun,PupAcc,PupRun,PupBr,PdownRun,Ppeak,Pmreq,Pstd};
+  $('FupAcc').innerHTML = fmt(FloadUpAcc,1)+' N';
+  $('FupRun').innerHTML = fmt(FloadUpRun,1)+' N';
+  $('TlowerRun').innerHTML = fmt(TmDownRun,2)+' N·m';
+  $('Psel').innerHTML = Pstd>=1000 ? fmt(Pstd/1000,2)+' kW' : fmt(Pstd,0)+' W';
+  $('mtotal').innerHTML = fmt(m,1)+' kg';
+  $('weight').innerHTML = fmt(m*g,1)+' N';
+  $('aupacc').innerHTML = fmt(aUpAcc,2)+' m/s²';
+  $('aupbr').innerHTML = fmt(aUpBr,2)+' m/s²';
+  $('FropeRun').innerHTML = fmt(FropeUpRun,1)+' N';
+  $('ndrum').innerHTML = fmt(ndrum,1);
+  $('ratio').innerHTML = fmt(ratio,1)+':1';
+  $('TmUpAcc').innerHTML = fmt(TmUpAcc,2);
+  $('TmUpRun').innerHTML = fmt(TmUpRun,2);
+  $('TdrumMax').innerHTML = fmt(Math.max(Math.abs(TdrumUpAcc),Math.abs(TdrumUpRun),Math.abs(TdrumUpBr),Math.abs(TdrumDownRun)),2)+' N·m';
+  $('Prun').innerHTML = fmt(PupRun,1)+' W';
+  $('Ppeak').innerHTML = fmt(Ppeak,1)+' W';
+  $('Pmreq').innerHTML = fmt(Pmreq,1)+' W';
+  $('Pstd').innerHTML = Pstd>=1000 ? fmt(Pstd/1000,2)+' kW' : fmt(Pstd,0)+' W';
+  $('stageTable').innerHTML = `
+    <tr><td>ยกขึ้น - ออกตัว</td><td>+${fmt(x.v,2)} m/s</td><td>+${fmt(aUpAcc,2)} m/s²</td><td>${fmt(FloadUpAcc,1)} N</td><td>${fmt(TdrumUpAcc,2)} N·m</td><td>${fmt(PupAcc,1)} W</td><td>Q1 (+ω,+T)</td></tr>
+    <tr><td>ยกขึ้น - คงที่</td><td>+${fmt(x.v,2)} m/s</td><td>0</td><td>${fmt(FloadUpRun,1)} N</td><td>${fmt(TdrumUpRun,2)} N·m</td><td>${fmt(PupRun,1)} W</td><td>Q1 (+ω,+T)</td></tr>
+    <tr><td>ยกขึ้น - เบรกก่อนหยุด</td><td>+ → 0</td><td>${fmt(aUpBr,2)} m/s²</td><td>${fmt(FloadUpBr,1)} N</td><td>${fmt(TdrumUpBr,2)} N·m</td><td>${fmt(PupBr,1)} W</td><td>โดยมากยัง Q1; ถ้าเบรกแรงมากอาจ Q2</td></tr>
+    <tr><td>ลดลง - คุมความเร็วคงที่</td><td>-${fmt(x.v,2)} m/s</td><td>0</td><td>${fmt(FloadDownRun,1)} N</td><td>${fmt(TdrumDownRun,2)} N·m</td><td>${fmt(PdownRun,1)} W</td><td>Q4 (-ω,+T) เบรก/คืนพลังงาน</td></tr>`;
+  $('recommendation').innerHTML = `
+    <b>คำแนะนำเบื้องต้น:</b> เลือก geared motor ประมาณ <b>${Pstd>=1000?fmt(Pstd/1000,2)+' kW':fmt(Pstd,0)+' W'}</b>,
+    motor speed ≈ ${fmt(x.nm,0)} rpm, gear ratio ≈ <b>${fmt(ratio,1)}:1</b>.
+    แรงบิดดรัมสูงสุด ≈ <b>${fmt(Math.max(Math.abs(TdrumUpAcc),Math.abs(TdrumUpRun),Math.abs(TdrumUpBr),Math.abs(TdrumDownRun)),2)} N·m</b>.
+    ควรใช้ drive ที่รองรับ braking และมี mechanical brake สำหรับ hold position / emergency stop.`;
+  if(window.MathJax) MathJax.typesetPromise();
+  drawPlots();
+}
+function loadExample(type){
+  if(type==='light'){
+    $('mload').value=50; $('mhook').value=5; $('v').value=0.18; $('tacc').value=0.8; $('tbr').value=0.6; $('r').value=0.06; $('parts').value=1; $('fa').value=20; $('etap').value=0.95; $('etag').value=0.9; $('etas').value=0.88; $('nm').value=1450; $('sf').value=1.8; $('manualRatio').value='';
+  }else{
+    $('mload').value=500; $('mhook').value=40; $('v').value=0.20; $('tacc').value=1.2; $('tbr').value=0.8; $('r').value=0.12; $('parts').value=2; $('fa').value=120; $('etap').value=0.90; $('etag').value=0.88; $('etas').value=0.90; $('nm').value=1450; $('sf').value=2.0; $('manualRatio').value='';
+  }
+  calc();
+}
+function drawLine(canvas, data, ylabel, color){
+  const c=$(canvas), ctx=c.getContext('2d'), w=c.width=c.clientWidth*2, h=c.height=c.clientHeight*2;
+  ctx.clearRect(0,0,w,h); ctx.scale(2,2);
+  const W=c.clientWidth,H=c.clientHeight, pad=40;
+  const xs=data.map(p=>p[0]), ys=data.map(p=>p[1]);
+  const xmin=Math.min(...xs), xmax=Math.max(...xs), ymin=Math.min(0,...ys)*1.15, ymax=Math.max(0,...ys)*1.15 || 1;
+  const X=x=>pad+(x-xmin)/(xmax-xmin)*(W-pad*1.5);
+  const Y=y=>H-pad-(y-ymin)/(ymax-ymin)*(H-pad*1.6);
+  ctx.strokeStyle='#d7e3e3'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad,14); ctx.lineTo(pad,H-pad); ctx.lineTo(W-20,H-pad); ctx.stroke();
+  ctx.fillStyle='#667085'; ctx.font='12px Anuphan'; ctx.fillText('t (s)',W-55,H-12); ctx.fillText(ylabel,8,24);
+  ctx.strokeStyle='#94a3b8'; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(pad,Y(0)); ctx.lineTo(W-20,Y(0)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle=color; ctx.lineWidth=3; ctx.beginPath();
+  data.forEach((p,i)=>{ if(i===0)ctx.moveTo(X(p[0]),Y(p[1])); else ctx.lineTo(X(p[0]),Y(p[1])); });
+  ctx.stroke();
+}
+function drawPlots(){
+  if(!R.x) return;
+  const x=R.x;
+  const t1=x.tacc, t2=t1+2.2, t3=t2+x.tbr, t4=t3+0.8, t5=t4+2.2;
+  drawLine('speedCanvas', [[0,0],[t1,x.v],[t2,x.v],[t3,0],[t4,0],[t4,-x.v],[t5,-x.v]], 'v load (m/s)', '#007b7a');
+  drawLine('torqueCanvas', [[0,R.TmUpAcc],[t1,R.TmUpAcc],[t1,R.TmUpRun],[t2,R.TmUpRun],[t2,R.TmUpBr],[t3,0],[t4,0],[t4,R.TmDownRun],[t5,R.TmDownRun]], 'T motor (N·m)', '#f26b21');
+}
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
+calc();
+</script>
+</body>
+</html>

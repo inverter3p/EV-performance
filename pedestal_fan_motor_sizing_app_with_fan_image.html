@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pedestal Fan Motor Sizing App | Electric Drives</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['$', '$']] }, svg: { fontCache: 'global' } };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root{
+      --teal:#007b7a; --teal2:#e9fbfb; --orange:#f26b21; --ink:#1f2937;
+      --muted:#667085; --line:#d7e3e3; --bg:#f7fafb; --card:#ffffff;
+      --good:#0f9f6e; --warn:#f59e0b; --bad:#ef4444; --blue:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:'Anuphan', system-ui, sans-serif; color:var(--ink);
+      background:linear-gradient(180deg,#f8fbfc 0%,#eef7f7 100%);
+    }
+    header{
+      padding:28px 34px 18px; background:white; border-bottom:1px solid var(--line);
+      position:sticky; top:0; z-index:3;
+    }
+    .title{display:flex; align-items:flex-start; justify-content:space-between; gap:20px}
+    h1{font-size:30px; margin:0; letter-spacing:-.5px}
+    h1 span{color:var(--teal)}
+    .subtitle{margin-top:8px; color:var(--muted); font-size:15px}
+    .pill{border:1px solid var(--line); border-radius:999px; padding:8px 12px; font-size:13px; color:var(--teal); background:var(--teal2); white-space:nowrap}
+    main{padding:22px 34px 40px; max-width:1500px; margin:auto}
+    .grid{display:grid; grid-template-columns:430px 1fr; gap:18px; align-items:start}
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:0 8px 24px rgba(0,60,60,.06);
+      overflow:hidden;
+    }
+    .card h2{
+      font-size:18px; margin:0; padding:14px 16px; border-bottom:1px solid var(--line);
+      background:linear-gradient(90deg,var(--teal2),#fff); color:var(--teal);
+    }
+    .section{padding:15px 16px}
+    .row{display:grid; grid-template-columns:1fr 110px 72px; gap:8px; align-items:center; margin-bottom:9px}
+    label{font-size:13.2px; color:#344054}
+    input, select{
+      width:100%; padding:8px 10px; border:1px solid #cfdada; border-radius:10px; background:#fff;
+      font-family:inherit; font-size:13.5px;
+    }
+    .unit{font-size:12.5px; color:var(--muted)}
+    .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .three{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+    .buttons{display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 16px}
+    button{
+      border:0; border-radius:12px; padding:10px 13px; font-family:inherit; font-weight:600; cursor:pointer;
+      background:var(--teal); color:white; box-shadow:0 4px 12px rgba(0,123,122,.2)
+    }
+    button.secondary{background:#fff; color:var(--teal); border:1px solid var(--line); box-shadow:none}
+    button.orange{background:var(--orange)}
+    .tabs{display:flex; gap:8px; flex-wrap:wrap; padding:12px 12px 0}
+    .tab{background:#fff; color:var(--muted); border:1px solid var(--line); box-shadow:none; padding:8px 12px}
+    .tab.active{background:var(--teal); color:#fff}
+    .panel{display:none; padding:16px}
+    .panel.active{display:block}
+    .summary{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px}
+    .metric{border:1px solid var(--line); border-radius:16px; padding:13px; background:#fff}
+    .metric .name{font-size:12.5px; color:var(--muted)}
+    .metric .val{font-size:24px; font-weight:700; margin-top:4px}
+    .metric .val.teal{color:var(--teal)} .metric .val.orange{color:var(--orange)}
+    .metric .sub{font-size:12px; color:var(--muted); margin-top:4px}
+    table{width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#fff}
+    th,td{padding:9px 10px; border-bottom:1px solid var(--line); font-size:13px; text-align:right; vertical-align:top}
+    th:first-child, td:first-child{text-align:left}
+    th{background:#f2f8f8; color:#0f5f5e; font-weight:700}
+    tr:last-child td{border-bottom:0}
+    .formula{background:#fbffff; border:1px solid var(--line); border-radius:14px; padding:13px; margin:8px 0; font-size:14px; line-height:1.55}
+    .canvasWrap{height:300px; border:1px solid var(--line); border-radius:16px; background:white; padding:8px}
+    canvas{width:100%; height:100%}
+    .warnbox{border-left:5px solid var(--orange); background:#fff7ed; padding:12px 14px; border-radius:12px; font-size:13px; color:#7c2d12; margin:10px 0; line-height:1.65}
+    .goodbox{border-left:5px solid var(--good); background:#ecfdf3; padding:12px 14px; border-radius:12px; font-size:13px; color:#064e3b; margin:10px 0; line-height:1.65}
+    .small{font-size:12.5px; color:var(--muted)}
+    .workflow{display:flex; gap:6px; flex-wrap:wrap}
+    .wf{padding:6px 9px; border-radius:999px; background:#eef8f8; border:1px solid var(--line); font-size:12px}
+    .speedCard{border:1px solid var(--line); border-radius:16px; padding:12px; background:#fff}
+    .speedCard h3{margin:0 0 8px; color:var(--teal); font-size:16px}
+    .bar{height:12px; background:#e5eeee; border-radius:999px; overflow:hidden; margin:5px 0 10px}
+    .bar span{display:block; height:100%; background:linear-gradient(90deg,var(--teal),var(--orange)); width:0%}
+
+    .fanHero{
+      margin:0 16px 14px; border:1px solid var(--line); border-radius:18px;
+      background:linear-gradient(135deg,#ffffff 0%,#effafa 100%);
+      overflow:hidden; box-shadow:0 8px 24px rgba(0,60,60,.05)
+    }
+    .fanHero svg{display:block; width:100%; height:auto}
+
+    @media(max-width:1050px){.grid{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}.two,.three{grid-template-columns:1fr}}
+    @media print{
+      header{position:static}.grid{grid-template-columns:1fr} .buttons,.tabs{display:none}
+      body{background:white} .panel{display:block!important; page-break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <div>
+      <h1>Application คำนวณขนาดมอเตอร์ <span>พัดลมตั้งพื้น 16 นิ้ว</span></h1>
+      <div class="subtitle">ประมาณโหลดพัดลมเบอร์ 1–2–3 ด้วยกฎพัดลม \(T\propto\omega^2\), \(P\propto\omega^3\) และค่าสัมประสิทธิ์กำลังของใบพัด</div>
+    </div>
+    <div class="pill">Electric Drives | Fan Load Sizing</div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <aside class="card">
+      <h2>1) กำหนดข้อมูลพัดลมและมอเตอร์</h2>
+      <div class="section">
+        <div class="row"><label>เส้นผ่านศูนย์กลางใบพัด \(D\)</label><input id="Dinch" type="number" value="16" step="1"><div class="unit">inch</div></div>
+        <div class="row"><label>ความหนาแน่นอากาศ \(\rho\)</label><input id="rho" type="number" value="1.18" step="0.01"><div class="unit">kg/m³</div></div>
+        <div class="row"><label>Power coefficient \(C_P\)</label><input id="cp" type="number" value="0.30" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>Flow coefficient \(\phi\)</label><input id="phi" type="number" value="0.18" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>แรงเสียดทาน/iron loss ที่เพลา</label><input id="pfix" type="number" value="8" step="1"><div class="unit">W</div></div>
+        <div class="row"><label>ประสิทธิภาพมอเตอร์ \(\eta_m\)</label><input id="etam" type="number" value="0.62" step="0.01"><div class="unit">-</div></div>
+        <div class="row"><label>Service factor</label><input id="sf" type="number" value="1.25" step="0.05"><div class="unit">x</div></div>
+        <div class="row"><label>เวลาเร่งถึงเบอร์ 3</label><input id="tacc" type="number" value="2.0" step="0.1"><div class="unit">s</div></div>
+        <div class="row"><label>โมเมนต์ความเฉื่อยโดยประมาณ \(J\)</label><input id="J" type="number" value="0.004" step="0.001"><div class="unit">kg·m²</div></div>
+      </div>
+
+      <h2>2) ความเร็วรอบแต่ละเบอร์</h2>
+      <div class="section">
+        <div class="row"><label>เบอร์ 1 \(n_1\)</label><input id="n1" type="number" value="850" step="25"><div class="unit">rpm</div></div>
+        <div class="row"><label>เบอร์ 2 \(n_2\)</label><input id="n2" type="number" value="1050" step="25"><div class="unit">rpm</div></div>
+        <div class="row"><label>เบอร์ 3 \(n_3\)</label><input id="n3" type="number" value="1250" step="25"><div class="unit">rpm</div></div>
+      </div>
+
+      <div class="buttons">
+        <button onclick="calc()">คำนวณใหม่</button>
+        <button class="secondary" onclick="loadExample('low')">ใบพัดเบา</button>
+        <button class="secondary" onclick="loadExample('normal')">ค่าทั่วไป</button>
+        <button class="secondary" onclick="loadExample('heavy')">ใบพัดกินแรง</button>
+        <button class="orange" onclick="window.print()">พิมพ์/บันทึก PDF</button>
+      </div>
+
+      <div class="section">
+        <div class="workflow">
+          <span class="wf">ขนาดใบพัด</span><span class="wf">ความเร็วรอบ</span><span class="wf">แรงบิด</span><span class="wf">กำลัง</span><span class="wf">เลือกมอเตอร์</span><span class="wf">เลือกวงจรปรับสปีด</span>
+        </div>
+      </div>
+    </aside>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('result',this)">ผลคำนวณ</button>
+        <button class="tab" onclick="showTab('formula',this)">สมการพัดลม</button>
+        <button class="tab" onclick="showTab('motor',this)">เลือกมอเตอร์</button>
+        <button class="tab" onclick="showTab('plot',this)">กราฟ</button>
+        <button class="tab" onclick="showTab('worksheet',this)">ใบงาน</button>
+      </div>
+
+      <div id="result" class="panel active">
+
+        <div class="fanHero">
+          <svg viewBox="0 0 520 300" role="img" aria-label="16 inch pedestal fan illustration">
+            <defs>
+              <linearGradient id="fanTeal" x1="0" x2="1">
+                <stop offset="0" stop-color="#e9fbfb"/>
+                <stop offset="1" stop-color="#b8eeee"/>
+              </linearGradient>
+              <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#004d4d" flood-opacity="0.12"/>
+              </filter>
+            </defs>
+
+            <!-- airflow -->
+            <path d="M330 78 C390 45, 435 55, 485 35" fill="none" stroke="#00a6a6" stroke-width="5" stroke-linecap="round" opacity=".75"/>
+            <path d="M335 125 C395 100, 435 110, 490 92" fill="none" stroke="#00a6a6" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+            <path d="M330 172 C390 198, 435 185, 485 215" fill="none" stroke="#00a6a6" stroke-width="5" stroke-linecap="round" opacity=".65"/>
+            <polygon points="485,35 469,32 477,47" fill="#00a6a6" opacity=".75"/>
+            <polygon points="490,92 474,88 482,103" fill="#00a6a6" opacity=".55"/>
+            <polygon points="485,215 470,205 469,222" fill="#00a6a6" opacity=".65"/>
+
+            <!-- stand -->
+            <g filter="url(#softShadow)">
+              <rect x="178" y="188" width="24" height="73" rx="8" fill="#334155"/>
+              <rect x="166" y="180" width="48" height="18" rx="9" fill="#64748b"/>
+              <path d="M140 278 C160 258, 220 258, 242 278 Z" fill="#64748b"/>
+              <rect x="115" y="277" width="152" height="12" rx="6" fill="#334155"/>
+            </g>
+
+            <!-- motor housing -->
+            <g filter="url(#softShadow)">
+              <rect x="206" y="101" width="88" height="54" rx="22" fill="#f8fafc" stroke="#334155" stroke-width="4"/>
+              <rect x="283" y="112" width="35" height="32" rx="10" fill="#f26b21" stroke="#334155" stroke-width="3"/>
+              <circle cx="206" cy="128" r="16" fill="#007b7a" stroke="#334155" stroke-width="4"/>
+            </g>
+
+            <!-- fan cage -->
+            <g transform="translate(190 128)" filter="url(#softShadow)">
+              <circle r="93" fill="url(#fanTeal)" stroke="#334155" stroke-width="4"/>
+              <circle r="78" fill="#ffffff" opacity=".75" stroke="#94a3b8" stroke-width="2"/>
+              <circle r="18" fill="#f8fafc" stroke="#334155" stroke-width="4"/>
+              <circle r="8" fill="#f26b21"/>
+              <!-- cage spokes -->
+              <g stroke="#94a3b8" stroke-width="1.8" opacity=".85">
+                <line x1="0" y1="-89" x2="0" y2="-20"/>
+                <line x1="0" y1="20" x2="0" y2="89"/>
+                <line x1="-89" y1="0" x2="-20" y2="0"/>
+                <line x1="20" y1="0" x2="89" y2="0"/>
+                <line x1="63" y1="-63" x2="15" y2="-15"/>
+                <line x1="-63" y1="63" x2="-15" y2="15"/>
+                <line x1="-63" y1="-63" x2="-15" y2="-15"/>
+                <line x1="63" y1="63" x2="15" y2="15"/>
+              </g>
+              <circle r="92" fill="none" stroke="#334155" stroke-width="4"/>
+              <!-- blades -->
+              <g fill="#007b7a" opacity=".88">
+                <path d="M8 -12 C62 -70, 78 -34, 30 -8 C22 -3, 15 -1, 8 -12Z"/>
+                <path d="M13 7 C86 26, 55 62, 14 32 C7 25, 5 17, 13 7Z"/>
+                <path d="M-15 6 C-55 72, -79 34, -32 8 C-23 3, -19 -2, -15 6Z"/>
+                <path d="M-7 -14 C-86 -25, -54 -63, -15 -31 C-8 -23, -5 -17, -7 -14Z"/>
+              </g>
+              <path d="M-60 -80 A95 95 0 0 1 55 -84" fill="none" stroke="#f26b21" stroke-width="5" stroke-linecap="round"/>
+              <polygon points="58,-83 42,-91 45,-73" fill="#f26b21"/>
+            </g>
+
+            <!-- labels -->
+            <g font-family="Anuphan, sans-serif">
+              <rect x="20" y="22" width="128" height="38" rx="19" fill="#007b7a"/>
+              <text x="84" y="47" text-anchor="middle" fill="white" font-size="18" font-weight="700">ใบพัด 16 นิ้ว</text>
+              <rect x="330" y="238" width="142" height="34" rx="17" fill="#fff7ed" stroke="#f26b21"/>
+              <text x="401" y="261" text-anchor="middle" fill="#9a3412" font-size="15" font-weight="700">โหลดพัดลม: P ∝ ω³</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="summary">
+          <div class="metric"><div class="name">เส้นผ่านศูนย์กลาง</div><div class="val teal" id="Dmeter">-</div><div class="sub">m</div></div>
+          <div class="metric"><div class="name">กำลังเพลาสูงสุด</div><div class="val orange" id="PshaftMax">-</div><div class="sub">ที่เบอร์ 3</div></div>
+          <div class="metric"><div class="name">แรงบิดสูงสุด</div><div class="val teal" id="Tmax">-</div><div class="sub">N·m</div></div>
+          <div class="metric"><div class="name">เลือกมอเตอร์อย่างน้อย</div><div class="val orange" id="Psel">-</div><div class="sub">รวม SF</div></div>
+        </div>
+
+        <div class="three" id="speedCards"></div>
+
+        <div style="margin-top:14px">
+          <table>
+            <thead><tr><th>เบอร์</th><th>ความเร็ว</th><th>Tip speed</th><th>ลมโดยประมาณ</th><th>แรงบิดโหลด</th><th>กำลังเพลา</th><th>กำลังไฟเข้า</th></tr></thead>
+            <tbody id="resultTable"></tbody>
+          </table>
+        </div>
+
+        <div id="recommendation" class="goodbox"></div>
+        <div class="warnbox">
+          ค่าที่ได้เป็นการประมาณเพื่อการเรียน โดย \(C_P\), \(\phi\), ประสิทธิภาพมอเตอร์ และรูปทรงใบพัดมีผลมาก พัดลมจริงอาจมีตะแกรงหน้า–หลัง การรั่วไหลของลม มุมใบพัด และวงจรปรับสปีดที่ทำให้ค่าจริงต่างจากนี้
+        </div>
+      </div>
+
+      <div id="formula" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">หลักคิดของโหลดพัดลม</h2>
+        <div class="formula">
+          โหลดพัดลมเป็นโหลดแบบแรงบิดเพิ่มตามกำลังสองของความเร็ว:
+          \[
+          T_{fan}\propto \omega^2,\qquad P_{fan}=T\omega\propto \omega^3
+          \]
+          แบบประมาณด้วย power coefficient:
+          \[
+          P_{aero}\approx C_P \rho n^3 D^5
+          \]
+          โดย \(n\) คือความเร็วรอบหน่วย rev/s และ \(D\) คือเส้นผ่านศูนย์กลางใบพัดหน่วย m
+        </div>
+        <div class="two">
+          <div class="formula">
+            ประมาณความเร็วปลายใบพัด:
+            \[
+            V_{tip}=\pi D n
+            \]
+            ประมาณความเร็วลมเฉลี่ย:
+            \[
+            v_{air}\approx \phi V_{tip}
+            \]
+            อัตราการไหล:
+            \[
+            Q\approx A v_{air},\quad A=\frac{\pi D^2}{4}
+            \]
+          </div>
+          <div class="formula">
+            รวม loss แบบง่าย:
+            \[
+            P_{shaft}=P_{aero}+P_{fix}
+            \]
+            \[
+            T_{load}=\frac{P_{shaft}}{\omega}
+            \]
+            กำลังไฟเข้าประมาณ:
+            \[
+            P_{in}=\frac{P_{shaft}}{\eta_m}
+            \]
+          </div>
+        </div>
+        <div class="warnbox">
+          สำหรับพัดลมตั้งพื้น 16 นิ้ว ค่า \(C_P\) ในแอปนี้ตั้งเป็น “effective coefficient” เพื่อให้รวมผลรูปทรงใบพัดและ loss บางส่วน จึงอาจสูงกว่าค่าทางอากาศพลศาสตร์บริสุทธิ์
+        </div>
+      </div>
+
+      <div id="motor" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">เลือกขนาดมอเตอร์และวงจรปรับสปีด</h2>
+        <div class="summary">
+          <div class="metric"><div class="name">กำลังเพลาที่ต้องการ</div><div class="val teal" id="PshaftNeed">-</div><div class="sub">เบอร์ 3</div></div>
+          <div class="metric"><div class="name">กำลังไฟเข้าโดยประมาณ</div><div class="val teal" id="PinNeed">-</div><div class="sub">เบอร์ 3</div></div>
+          <div class="metric"><div class="name">กำลังมอเตอร์พร้อม SF</div><div class="val orange" id="PmotorNeed">-</div><div class="sub">สำหรับเลือก rating</div></div>
+          <div class="metric"><div class="name">แรงบิดเร่งเพิ่ม</div><div class="val teal" id="TaccNeed">-</div><div class="sub">ช่วงออกตัวถึงเบอร์ 3</div></div>
+        </div>
+
+        <table>
+          <tbody>
+            <tr><th>รายการเลือกมอเตอร์</th><th>แนวทาง</th></tr>
+            <tr><td>ชนิดมอเตอร์ทั่วไป</td><td>PSC induction motor, shaded-pole motor, หรือ BLDC motor ในพัดลมรุ่นประหยัดพลังงาน</td></tr>
+            <tr><td>ขนาดที่แนะนำ</td><td id="motorSizeText"></td></tr>
+            <tr><td>การปรับสปีด เบอร์ 1–2–3</td><td>เปลี่ยน tap winding / capacitor speed control / triac control / inverter หรือ BLDC drive แล้วแต่ชนิดมอเตอร์</td></tr>
+            <tr><td>สิ่งที่ต้องตรวจสอบ</td><td>อุณหภูมิมอเตอร์, starting torque, เสียง, vibration, stall condition, safety guard</td></tr>
+          </tbody>
+        </table>
+
+        <div class="formula">
+          แรงบิดช่วงออกตัวแบบง่าย:
+          \[
+          T_{start,req}\approx T_{fan}(\omega_3)+J\frac{\omega_3}{t_{acc}}
+          \]
+          ถ้าอยากให้พัดลมเร่งเร็วขึ้น \(t_{acc}\) ลดลง แรงบิดช่วงออกตัวจะสูงขึ้น
+        </div>
+      </div>
+
+      <div id="plot" class="panel">
+        <div class="two">
+          <div>
+            <h2 style="padding:0 0 8px;background:none;border:0">Torque-speed curve</h2>
+            <div class="canvasWrap"><canvas id="torqueCanvas"></canvas></div>
+          </div>
+          <div>
+            <h2 style="padding:0 0 8px;background:none;border:0">Power-speed curve</h2>
+            <div class="canvasWrap"><canvas id="powerCanvas"></canvas></div>
+          </div>
+        </div>
+        <div class="small" style="margin-top:10px">กราฟช่วยให้เห็นว่าโหลดพัดลมกินกำลังเพิ่มเร็วมากเมื่อเพิ่มรอบ เพราะ \(P\propto \omega^3\)</div>
+      </div>
+
+      <div id="worksheet" class="panel">
+        <h2 style="padding:0 0 8px;background:none;border:0">ใบงานสั้นสำหรับผู้เรียน</h2>
+        <table>
+          <tbody>
+            <tr><th>คำถาม</th><th>คำตอบของผู้เรียน</th></tr>
+            <tr><td>1. พัดลมเป็นโหลดแรงบิดคงที่หรือโหลดแรงบิดแปรตามความเร็ว?</td><td>________________________________________</td></tr>
+            <tr><td>2. ถ้าความเร็วรอบเพิ่ม 20% กำลังโดยประมาณจะเพิ่มกี่เปอร์เซ็นต์?</td><td>________________________________________</td></tr>
+            <tr><td>3. ทำไมเบอร์ 3 ใช้กำลังมากกว่าเบอร์ 1 มาก?</td><td>________________________________________</td></tr>
+            <tr><td>4. ถ้าเพิ่มขนาดใบพัดจาก 16 นิ้วเป็น 18 นิ้ว กำลังจะเปลี่ยนอย่างไรจาก \(D^5\)?</td><td>________________________________________</td></tr>
+            <tr><td>5. พัดลมตั้งพื้นทั่วไปควรใช้มอเตอร์ชนิดใด และทำไม?</td><td>________________________________________</td></tr>
+            <tr><td>6. ถ้าใช้ BLDC motor ข้อดีด้านการควบคุม speed คืออะไร?</td><td>________________________________________</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const stdW = [10,15,20,25,30,40,50,60,75,90,120,150,180,250,370,550,750];
+
+function fmt(x, d=1){ return Number.isFinite(x) ? x.toFixed(d) : '-' }
+function showTab(id, btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  $(id).classList.add('active'); btn.classList.add('active');
+  if(id==='plot') setTimeout(drawPlots,50);
+}
+function vals(){
+  const v = id => parseFloat($(id).value)||0;
+  return {
+    Dinch:v('Dinch'), rho:v('rho'), cp:v('cp'), phi:v('phi'), pfix:v('pfix'),
+    etam:v('etam'), sf:v('sf'), tacc:v('tacc'), J:v('J'),
+    speeds:[v('n1'),v('n2'),v('n3')]
+  };
+}
+let R = {};
+function calc(){
+  const x = vals();
+  const D = x.Dinch*0.0254;
+  const A = Math.PI*D*D/4;
+  const rows = x.speeds.map((rpm,idx)=>{
+    const n = rpm/60;
+    const w = 2*Math.PI*n;
+    const vtip = Math.PI*D*n;
+    const vair = x.phi*vtip;
+    const Q = A*vair;
+    const Paero = x.cp*x.rho*Math.pow(n,3)*Math.pow(D,5);
+    const Pshaft = Paero + x.pfix;
+    const T = Pshaft/w;
+    const Pin = Pshaft/x.etam;
+    return {idx:idx+1,rpm,n,w,vtip,vair,Q,Paero,Pshaft,T,Pin};
+  });
+  const max = rows[2];
+  const Tacc = x.J*max.w/x.tacc;
+  const Tstart = max.T + Tacc;
+  const PmotorReq = max.Pshaft*x.sf;
+  const Pstd = stdW.find(w=>w>=PmotorReq) || Math.ceil(PmotorReq/50)*50;
+  R = {x,D,A,rows,max,Tacc,Tstart,PmotorReq,Pstd};
+
+  $('Dmeter').innerHTML = fmt(D,3);
+  $('PshaftMax').innerHTML = fmt(max.Pshaft,1)+' W';
+  $('Tmax').innerHTML = fmt(max.T,3);
+  $('Psel').innerHTML = fmt(Pstd,0)+' W';
+
+  $('speedCards').innerHTML = rows.map(r=>{
+    const pct = Math.min(100, r.Pshaft/max.Pshaft*100);
+    return `<div class="speedCard">
+      <h3>เบอร์ ${r.idx}</h3>
+      <div class="small">ความเร็ว ${fmt(r.rpm,0)} rpm</div>
+      <div class="bar"><span style="width:${pct}%"></span></div>
+      <b>${fmt(r.Pshaft,1)} W</b> shaft power<br>
+      <span class="small">Torque ${fmt(r.T,3)} N·m | \(Q\) ≈ ${fmt(r.Q,2)} m³/s</span>
+    </div>`;
+  }).join('');
+
+  $('resultTable').innerHTML = rows.map(r=>`
+    <tr>
+      <td>เบอร์ ${r.idx}</td>
+      <td>${fmt(r.rpm,0)} rpm</td>
+      <td>${fmt(r.vtip,1)} m/s</td>
+      <td>${fmt(r.vair,2)} m/s<br><span class="small">Q≈${fmt(r.Q,2)} m³/s</span></td>
+      <td>${fmt(r.T,3)} N·m</td>
+      <td>${fmt(r.Pshaft,1)} W</td>
+      <td>${fmt(r.Pin,1)} W</td>
+    </tr>`).join('');
+
+  $('recommendation').innerHTML = `
+    <b>คำแนะนำเบื้องต้น:</b> สำหรับใบพัด ${x.Dinch}" ที่เบอร์ 3 ประมาณ ${fmt(max.rpm,0)} rpm 
+    ต้องการกำลังเพลาประมาณ <b>${fmt(max.Pshaft,1)} W</b> และกำลังมอเตอร์หลังเผื่อ service factor ประมาณ 
+    <b>${fmt(PmotorReq,1)} W</b> จึงเลือกขนาดมาตรฐานใกล้เคียง <b>${fmt(Pstd,0)} W</b>.
+    ถ้ารวมประสิทธิภาพมอเตอร์ กำลังไฟเข้าที่เบอร์ 3 ประมาณ <b>${fmt(max.Pin,1)} W</b>.`;
+
+  $('PshaftNeed').innerHTML = fmt(max.Pshaft,1)+' W';
+  $('PinNeed').innerHTML = fmt(max.Pin,1)+' W';
+  $('PmotorNeed').innerHTML = fmt(PmotorReq,1)+' W';
+  $('TaccNeed').innerHTML = fmt(Tacc,3)+' N·m';
+  $('motorSizeText').innerHTML = `เลือกมอเตอร์ประมาณ ${fmt(Pstd,0)} W หรือมากกว่า โดยต้องตรวจสอบว่า starting torque ต้องมากกว่า ${fmt(Tstart,3)} N·m ที่ช่วงเร่งถึงเบอร์ 3`;
+  if(window.MathJax) MathJax.typesetPromise();
+  drawPlots();
+}
+function loadExample(type){
+  if(type==='low'){
+    $('cp').value=0.22; $('phi').value=0.16; $('pfix').value=6; $('etam').value=0.62; $('n1').value=800; $('n2').value=1000; $('n3').value=1200; $('J').value=0.003;
+  }else if(type==='heavy'){
+    $('cp').value=0.38; $('phi').value=0.20; $('pfix').value=10; $('etam').value=0.58; $('n1').value=900; $('n2').value=1125; $('n3').value=1350; $('J').value=0.006;
+  }else{
+    $('cp').value=0.30; $('phi').value=0.18; $('pfix').value=8; $('etam').value=0.62; $('n1').value=850; $('n2').value=1050; $('n3').value=1250; $('J').value=0.004;
+  }
+  calc();
+}
+function drawLine(canvas, data, ylabel, color){
+  const c=$(canvas), ctx=c.getContext('2d'), w=c.width=c.clientWidth*2, h=c.height=c.clientHeight*2;
+  ctx.clearRect(0,0,w,h); ctx.scale(2,2);
+  const W=c.clientWidth,H=c.clientHeight, pad=44;
+  const xs=data.map(p=>p[0]), ys=data.map(p=>p[1]);
+  const xmin=0, xmax=Math.max(...xs)*1.08, ymin=0, ymax=Math.max(...ys)*1.15 || 1;
+  const X=x=>pad+(x-xmin)/(xmax-xmin)*(W-pad*1.5);
+  const Y=y=>H-pad-(y-ymin)/(ymax-ymin)*(H-pad*1.6);
+  ctx.strokeStyle='#d7e3e3'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad,14); ctx.lineTo(pad,H-pad); ctx.lineTo(W-20,H-pad); ctx.stroke();
+  ctx.fillStyle='#667085'; ctx.font='12px Anuphan'; ctx.fillText('speed (rpm)',W-92,H-12); ctx.fillText(ylabel,8,24);
+  ctx.strokeStyle=color; ctx.lineWidth=3; ctx.beginPath();
+  data.forEach((p,i)=>{ if(i===0)ctx.moveTo(X(p[0]),Y(p[1])); else ctx.lineTo(X(p[0]),Y(p[1])); });
+  ctx.stroke();
+  ctx.fillStyle=color;
+  data.forEach(p=>{ctx.beginPath(); ctx.arc(X(p[0]),Y(p[1]),4,0,Math.PI*2); ctx.fill();});
+}
+function drawPlots(){
+  if(!R.rows) return;
+  const torque = [[0,0],...R.rows.map(r=>[r.rpm,r.T])];
+  const power = [[0,0],...R.rows.map(r=>[r.rpm,r.Pshaft])];
+  drawLine('torqueCanvas', torque, 'T (N·m)', '#007b7a');
+  drawLine('powerCanvas', power, 'Pshaft (W)', '#f26b21');
+}
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
+calc();
+</script>
+</body>
+</html>
