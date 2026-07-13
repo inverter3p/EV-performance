@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>4-Quadrant H-Bridge: Speed & Back-EMF</title>
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --primary: #4C72B0;
+            --success: #55A868;
+            --danger: #C44E52;
+            --warning: #E1A551;
+            --text: #333;
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        h1 { color: var(--text); margin-bottom: 5px; text-align: center; }
+        p.subtitle { color: #666; margin-top: 0; margin-bottom: 20px; text-align: center; max-width: 800px; line-height: 1.4; }
+        .container {
+            display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;
+            background: white; padding: 20px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 1050px; width: 100%;
+        }
+        canvas {
+            background: #fff; border: 1px solid #ddd; border-radius: 4px;
+        }
+        .controls {
+            display: flex; flex-direction: column; gap: 15px; width: 380px;
+        }
+        .panel {
+            background: #f4f4f8; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0;
+        }
+        h3 { margin-top: 0; font-size: 16px; color: var(--text); border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .btn-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        }
+        button {
+            padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+            background: #e0e0e0; color: #333; transition: all 0.2s; border: 2px solid transparent;
+        }
+        button:hover { background: #d0d0d0; }
+        button.active { border-color: var(--text); box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
+        
+        #btn-q1.active { background: var(--success); color: white; }
+        #btn-q2.active { background: var(--warning); color: white; }
+        #btn-q3.active { background: var(--primary); color: white; }
+        #btn-q4.active { background: var(--danger); color: white; }
+
+        .status-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .status-table td { padding: 6px 0; border-bottom: 1px solid #ddd; }
+        .status-table td:nth-child(2) { font-weight: bold; text-align: right; font-family: monospace; font-size: 15px;}
+        
+        .desc-box { background: white; border-left: 4px solid #999; padding: 10px; margin-top: 15px; border-radius: 0 4px 4px 0;}
+        .desc-title { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+        .desc-text { font-size: 13px; color: #555; line-height: 1.4; margin: 0; }
+        
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; color: white; font-size: 11px; margin-left: 5px; vertical-align: text-bottom;}
+        .badge.build { background-color: #d97706; }
+        .badge.pump { background-color: #059669; }
+        
+        input[type=range] { width: 100%; margin-top: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>H-Bridge: Speed & Back-EMF limits</h1>
+    <p class="subtitle">Try lowering the motor speed while in a braking quadrant (Q2 or Q4). Notice how the Back-EMF drops, causing the inductor's charging capability to vanish. At low speeds, boost regenerative braking becomes physically impossible!</p>
+
+    <div class="container">
+        <canvas id="simCanvas" width="550" height="460"></canvas>
+
+        <div class="controls">
+            <div class="panel">
+                <h3>Select Operating Mode</h3>
+                <div class="btn-grid">
+                    <button id="btn-q4" onclick="setQuadrant(4)">Q4: Rev Brake<br><small>(Boost Regen)</small></button>
+                    <button id="btn-q1" class="active" onclick="setQuadrant(1)">Q1: Fwd Motor<br><small>(Driving)</small></button>
+                    <button id="btn-q3" onclick="setQuadrant(3)">Q3: Rev Motor<br><small>(Driving)</small></button>
+                    <button id="btn-q2" onclick="setQuadrant(2)">Q2: Fwd Brake<br><small>(Boost Regen)</small></button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Motor Speed (&omega;)</h3>
+                <input type="range" id="speedSlider" min="0" max="100" value="100">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px; color: #555;">
+                    <span>0% (0V EMF)</span>
+                    <span id="speedValLabel">100% (40V EMF)</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Live Circuit Status</h3>
+                <table class="status-table">
+                    <tr><td>Battery ($V_{cc}$)</td><td style="color: var(--text)">48.0 V</td></tr>
+                    <tr><td>Back-EMF ($E$)</td><td id="valEMF" style="color: var(--success)">40.0 V</td></tr>
+                    <tr><td>Motor Polarity</td><td id="valPolarity" style="color: var(--success)">[+] Left / [-] Right</td></tr>
+                    <tr><td>Active Comps</td><td id="valComps">S1, S4</td></tr>
+                </table>
+                
+                <div class="desc-box" id="descBox">
+                    <div class="desc-title" id="descTitle" style="color: var(--success)">Forward Motoring (Continuous)</div>
+                    <p class="desc-text" id="descText">
+                        Switches S1 and S4 are closed. Power flows from the 48V battery, overcoming the Back-EMF to drive the motor forward.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const speedSlider = document.getElementById('speedSlider');
+
+        // State variables
+        let currentQ = 1;
+        let dashOffset = 0;
+        let motorSpeedPct = 100; // 0 to 100
+        
+        // PWM/Regen switching states
+        let regenPhase = 0; // 0 = Build (Short), 1 = Pump (Diodes)
+        let lastToggleTime = performance.now();
+        const TOGGLE_INTERVAL = 800; 
+
+        // Interpolation for graph dot
+        let targetW = 100, currentW = 100;
+        let targetI = 100, currentI = 100;
+
+        speedSlider.addEventListener('input', (e) => {
+            motorSpeedPct = parseInt(e.target.value);
+            document.getElementById('speedValLabel').textContent = `${motorSpeedPct}%`;
+            updateGraphTargets();
+            updateDashboardTexts();
+        });
+
+        function setQuadrant(q) {
+            currentQ = q;
+            regenPhase = 0; 
+            lastToggleTime = performance.now();
+            
+            document.querySelectorAll('.btn-grid button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-q${q}`).classList.add('active');
+            
+            updateGraphTargets();
+            updateDashboardTexts();
+        }
+
+        function updateGraphTargets() {
+            // Speed (W) is positive for Q1/Q2, negative for Q3/Q4. 
+            // Torque (I) is positive for Q1/Q4, negative for Q2/Q3.
+            targetW = (currentQ === 1 || currentQ === 2) ? motorSpeedPct : -motorSpeedPct;
+            targetI = (currentQ === 1 || currentQ === 4) ? 100 : -100; 
+            
+            // If speed is zero, torque can't effectively push into regen due to no Back-EMF
+            if ((currentQ === 2 || currentQ === 4) && motorSpeedPct < 15) {
+                targetI = 0; // Regen fails at very low speeds
+            }
+        }
+
+        function updateDashboardTexts() {
+            const dt = document.getElementById('descTitle');
+            const dx = document.getElementById('descText');
+            const vc = document.getElementById('valComps');
+            const col = (currentQ===1) ? '#55A868' : (currentQ===2) ? '#E1A551' : (currentQ===3) ? '#4C72B0' : '#C44E52';
+
+            // Calculate Back-EMF (Assume 48V battery, Max EMF is 40V)
+            const emfVoltage = (40 * (motorSpeedPct / 100)).toFixed(1);
+            document.getElementById('valEMF').textContent = `${emfVoltage} V`;
+            document.getElementById('valEMF').style.color = col;
+
+            document.getElementById('valPolarity').textContent = (currentQ===1||currentQ===2) ? "[+] Left / [-] Right" : "[-] Left / [+] Right";
+            document.getElementById('valPolarity').style.color = col;
+            
+            document.getElementById('descBox').style.borderColor = col;
+            dt.style.color = col;
+
+            if (currentQ === 1) {
+                vc.textContent = "S1, S4 (Closed)";
+                dt.innerHTML = "Forward Motoring";
+                dx.innerHTML = `Power flows from the 48V battery, overcoming the ${emfVoltage}V Back-EMF to drive the motor forward.`;
+            } else if (currentQ === 3) {
+                vc.textContent = "S2, S3 (Closed)";
+                dt.innerHTML = "Reverse Motoring";
+                dx.innerHTML = `Power flows from the 48V battery backwards through the motor, overcoming the ${emfVoltage}V Back-EMF.`;
+            } else if (currentQ === 2) {
+                if (motorSpeedPct < 15) {
+                    vc.textContent = "S2, D4 (Failed)";
+                    dt.innerHTML = "Fwd Braking <span class='badge' style='background:#999'>INSUFFICIENT EMF</span>";
+                    dx.innerHTML = `At only ${emfVoltage}V, the Back-EMF is too weak to push enough current into the inductor. Boost action fails; mechanical brakes required.`;
+                } else if (regenPhase === 0) {
+                    vc.textContent = "S2, D4 (Active)";
+                    dt.innerHTML = "Fwd Braking <span class='badge build'>BUILD PHASE</span>";
+                    dx.innerHTML = `<strong>S2 closes.</strong> The ${emfVoltage}V Back-EMF drives current through the short circuit, heavily charging the internal inductor.`;
+                } else {
+                    vc.textContent = "D1, D4 (Active)";
+                    dt.innerHTML = "Fwd Braking <span class='badge pump'>PUMP PHASE</span>";
+                    dx.innerHTML = `<strong>S2 opens.</strong> The inductor voltage spike stacks on top of the ${emfVoltage}V EMF, exceeding 48V to pump current into the battery.`;
+                }
+            } else if (currentQ === 4) {
+                if (motorSpeedPct < 15) {
+                    vc.textContent = "S4, D2 (Failed)";
+                    dt.innerHTML = "Rev Braking <span class='badge' style='background:#999'>INSUFFICIENT EMF</span>";
+                    dx.innerHTML = `At only ${emfVoltage}V, the Back-EMF is too weak. Regen energy cannot overcome circuit losses.`;
+                } else if (regenPhase === 0) {
+                    vc.textContent = "S4, D2 (Active)";
+                    dt.innerHTML = "Rev Braking <span class='badge build'>BUILD PHASE</span>";
+                    dx.innerHTML = `<strong>S4 closes.</strong> The ${emfVoltage}V reverse Back-EMF shorts through S4 and D2, rapidly charging the inductor.`;
+                } else {
+                    vc.textContent = "D3, D2 (Active)";
+                    dt.innerHTML = "Rev Braking <span class='badge pump'>PUMP PHASE</span>";
+                    dx.innerHTML = `<strong>S4 opens.</strong> The inductor collapses, stacking with the ${emfVoltage}V EMF to blast current up through D3 to recharge the battery.`;
+                }
+            }
+        }
+
+        // --- Same drawing functions as before, just updated for dashed line speed based on motor speed ---
+        
+        function drawSwitch(x, y, isClosed, label, isRightSide) {
+            ctx.strokeStyle = "#444"; ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y - 20, 4, 0, Math.PI*2); ctx.fillStyle = "#444"; ctx.fill();
+            ctx.arc(x, y + 20, 4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(x, y - 20);
+            if (isClosed) { ctx.lineTo(x, y + 20); } else { ctx.lineTo(x + 15, y + 10); } 
+            ctx.stroke();
+            ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "#333";
+            ctx.fillText(label, isRightSide ? x + 35 : x - 55, y + 5);
+        }
+
+        function drawDiode(x, y, isActive, color, isRightSide) {
+            const dx = isRightSide ? 25 : -25;
+            const cx = x + dx;
+            ctx.strokeStyle = isActive ? color : "#999"; ctx.lineWidth = isActive ? 3 : 2;
+            ctx.beginPath(); ctx.moveTo(x, y - 20); ctx.lineTo(cx, y - 20); ctx.lineTo(cx, y - 10); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(cx, y + 20); ctx.lineTo(cx, y + 10); ctx.stroke();
+            ctx.fillStyle = isActive ? color : "#fff";
+            ctx.beginPath(); ctx.moveTo(cx - 8, y + 10); ctx.lineTo(cx + 8, y + 10); ctx.lineTo(cx, y - 10); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx - 8, y - 10); ctx.lineTo(cx + 8, y - 10); ctx.stroke();
+            ctx.font = "12px sans-serif"; ctx.fillStyle = isActive ? color : "#999";
+            ctx.fillText("D", isRightSide ? cx + 12 : cx - 22, y + 4);
+        }
+
+        function drawAnimatedLine(x1, y1, x2, y2, color) {
+            if (motorSpeedPct < 1) return; // Stop animation if speed is 0
+            ctx.save();
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color; ctx.lineWidth = 4;
+            ctx.setLineDash([10, 8]);
+            ctx.lineDashOffset = -dashOffset; 
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCircuit() {
+            let s1 = false, s2 = false, s3 = false, s4 = false;
+            let d1 = false, d2 = false, d3 = false, d4 = false;
+            let col = '#999';
+
+            let canRegen = motorSpeedPct >= 15;
+
+            if (currentQ === 1) { s1 = true; s4 = true; col = '#55A868'; }
+            else if (currentQ === 3) { s2 = true; s3 = true; col = '#4C72B0'; }
+            else if (currentQ === 2) {
+                col = '#E1A551';
+                if (canRegen) {
+                    if (regenPhase === 0) { s2 = true; d4 = true; } 
+                    else { d1 = true; d4 = true; }
+                }
+            }
+            else if (currentQ === 4) {
+                col = '#C44E52';
+                if (canRegen) {
+                    if (regenPhase === 0) { s4 = true; d2 = true; } 
+                    else { d3 = true; d2 = true; }
+                }
+            }
+
+            // DC Rails
+            ctx.strokeStyle = "#333"; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(50, 50); ctx.lineTo(250, 50); ctx.stroke(); 
+            ctx.beginPath(); ctx.moveTo(50, 350); ctx.lineTo(250, 350); ctx.stroke(); 
+            
+            ctx.fillStyle = "#C44E52"; ctx.font = "bold 16px sans-serif"; ctx.fillText("+ 48V Battery", 50, 40);
+            ctx.fillStyle = "#4C72B0"; ctx.fillText("- GND", 50, 375);
+
+            // Legs
+            ctx.beginPath(); ctx.moveTo(100, 50); ctx.lineTo(100, 130); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(100, 170); ctx.lineTo(100, 230); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(100, 270); ctx.lineTo(100, 350); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(200, 50); ctx.lineTo(200, 130); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(200, 170); ctx.lineTo(200, 230); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(200, 270); ctx.lineTo(200, 350); ctx.stroke();
+
+            // Components
+            drawSwitch(100, 150, s1, "S1", false); drawSwitch(100, 250, s2, "S2", false);
+            drawSwitch(200, 150, s3, "S3", true);  drawSwitch(200, 250, s4, "S4", true);
+            drawDiode(100, 150, d1, col, false);   drawDiode(100, 250, d2, col, false);
+            drawDiode(200, 150, d3, col, true);    drawDiode(200, 250, d4, col, true);
+
+            // Motor connections
+            ctx.beginPath(); ctx.moveTo(100, 200); ctx.lineTo(120, 200); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(200, 200); ctx.lineTo(180, 200); ctx.stroke();
+
+            // Flow Paths
+            if (motorSpeedPct > 0) {
+                if (currentQ === 1) { 
+                    drawAnimatedLine(70, 50, 100, 50, col); drawAnimatedLine(100, 50, 100, 130, col); drawAnimatedLine(100, 170, 100, 200, col); drawAnimatedLine(100, 200, 120, 200, col); drawAnimatedLine(180, 200, 200, 200, col); drawAnimatedLine(200, 200, 200, 230, col); drawAnimatedLine(200, 270, 200, 350, col); drawAnimatedLine(200, 350, 70, 350, col);
+                } else if (currentQ === 3) { 
+                    drawAnimatedLine(70, 50, 200, 50, col); drawAnimatedLine(200, 50, 200, 130, col); drawAnimatedLine(200, 170, 200, 200, col); drawAnimatedLine(200, 200, 180, 200, col); drawAnimatedLine(120, 200, 100, 200, col); drawAnimatedLine(100, 200, 100, 230, col); drawAnimatedLine(100, 270, 100, 350, col); drawAnimatedLine(100, 350, 70, 350, col);
+                } else if (currentQ === 2 && canRegen) {
+                    if (regenPhase === 0) { 
+                        drawAnimatedLine(120, 200, 100, 200, col); drawAnimatedLine(100, 200, 100, 230, col); drawAnimatedLine(100, 270, 100, 350, col); drawAnimatedLine(100, 350, 200, 350, col); drawAnimatedLine(200, 350, 200, 270, col); drawAnimatedLine(225, 270, 225, 230, col); drawAnimatedLine(200, 230, 200, 200, col); drawAnimatedLine(200, 200, 180, 200, col); 
+                    } else { 
+                        drawAnimatedLine(120, 200, 100, 200, col); drawAnimatedLine(100, 200, 100, 170, col); drawAnimatedLine(75, 170, 75, 130, col); drawAnimatedLine(100, 130, 100, 50, col); drawAnimatedLine(100, 50, 70, 50, col); drawAnimatedLine(70, 350, 200, 350, col); drawAnimatedLine(200, 350, 200, 270, col); drawAnimatedLine(225, 270, 225, 230, col); drawAnimatedLine(200, 230, 200, 200, col); drawAnimatedLine(200, 200, 180, 200, col); 
+                    }
+                } else if (currentQ === 4 && canRegen) {
+                    if (regenPhase === 0) { 
+                        drawAnimatedLine(180, 200, 200, 200, col); drawAnimatedLine(200, 200, 200, 230, col); drawAnimatedLine(200, 270, 200, 350, col); drawAnimatedLine(200, 350, 100, 350, col); drawAnimatedLine(100, 350, 100, 270, col); drawAnimatedLine(75, 270, 75, 230, col); drawAnimatedLine(100, 230, 100, 200, col); drawAnimatedLine(100, 200, 120, 200, col); 
+                    } else { 
+                        drawAnimatedLine(180, 200, 200, 200, col); drawAnimatedLine(200, 200, 200, 170, col); drawAnimatedLine(225, 170, 225, 130, col); drawAnimatedLine(200, 130, 200, 50, col); drawAnimatedLine(200, 50, 70, 50, col); drawAnimatedLine(70, 350, 100, 350, col); drawAnimatedLine(100, 350, 100, 270, col); drawAnimatedLine(75, 270, 75, 230, col); drawAnimatedLine(100, 230, 100, 200, col); drawAnimatedLine(100, 200, 120, 200, col); 
+                    }
+                }
+            }
+
+            // Draw Motor
+            ctx.beginPath(); ctx.arc(150, 200, 28, 0, Math.PI*2);
+            ctx.fillStyle = "#f0f0f0"; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = "#333"; ctx.stroke();
+            
+            ctx.beginPath(); ctx.arc(142, 195, 4, 0, Math.PI, true); ctx.stroke();
+            ctx.beginPath(); ctx.arc(150, 195, 4, 0, Math.PI, true); ctx.stroke();
+            ctx.beginPath(); ctx.arc(158, 195, 4, 0, Math.PI, true); ctx.stroke();
+            ctx.fillStyle = "#333"; ctx.font = "bold 14px sans-serif"; ctx.fillText("L + EMF", 123, 215);
+
+            // Motor Polarity
+            ctx.font = "bold 18px monospace";
+            // Opacity based on speed to show EMF dropping
+            ctx.globalAlpha = Math.max(0.2, motorSpeedPct / 100); 
+            if (currentQ === 1 || currentQ === 2) {
+                ctx.fillStyle = "#C44E52"; ctx.fillText("+", 112, 175);
+                ctx.fillStyle = "#4C72B0"; ctx.fillText("-", 175, 175);
+            } else {
+                ctx.fillStyle = "#4C72B0"; ctx.fillText("-", 112, 175);
+                ctx.fillStyle = "#C44E52"; ctx.fillText("+", 175, 175);
+            }
+            ctx.globalAlpha = 1.0;
+
+            // Rotation Indicator (Speed scales the arc length visually)
+            if (motorSpeedPct > 0) {
+                ctx.beginPath();
+                const arcExt = (Math.PI/4) * (motorSpeedPct/100);
+                if (currentQ === 1 || currentQ === 2) {
+                    ctx.arc(150, 200, 38, -arcExt, arcExt);
+                    // Draw tiny arrow head
+                    const endX = 150 + 38 * Math.cos(arcExt); const endY = 200 + 38 * Math.sin(arcExt);
+                    ctx.lineTo(endX + 6, endY + 8); ctx.moveTo(endX + 8, endY - 2); ctx.lineTo(endX, endY); 
+                } else {
+                    ctx.arc(150, 200, 38, Math.PI - arcExt, Math.PI + arcExt);
+                    const endX = 150 + 38 * Math.cos(Math.PI - arcExt); const endY = 200 + 38 * Math.sin(Math.PI - arcExt);
+                    ctx.lineTo(endX - 6, endY - 8); ctx.moveTo(endX - 8, endY + 2); ctx.lineTo(endX, endY); 
+                }
+                ctx.strokeStyle = "#888"; ctx.lineWidth = 2; ctx.stroke();
+            }
+        }
+
+        function drawChart() {
+            const cx = 400, cy = 200, size = 100;
+            
+            ctx.fillStyle = "rgba(85, 168, 104, 0.1)"; ctx.fillRect(cx, cy - size, size, size); // Q1 
+            ctx.fillStyle = "rgba(196, 78, 82, 0.1)";  ctx.fillRect(cx - size, cy - size, size, size); // Q4 
+            ctx.fillStyle = "rgba(76, 114, 176, 0.1)"; ctx.fillRect(cx - size, cy, size, size); // Q3 
+            ctx.fillStyle = "rgba(225, 165, 81, 0.1)"; ctx.fillRect(cx, cy, size, size); // Q2 
+
+            ctx.beginPath(); ctx.moveTo(cx - size - 20, cy); ctx.lineTo(cx + size + 20, cy); ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, cy - size - 20); ctx.lineTo(cx, cy + size + 20); ctx.stroke();
+
+            ctx.fillStyle = "#333"; ctx.font = "12px sans-serif";
+            ctx.fillText("Speed (ω)", cx + size - 10, cy + 15);
+            ctx.fillText("Torque (I)", cx - 30, cy - size - 10);
+            
+            ctx.fillText("Q4", cx - size + 10, cy - size + 20); 
+            ctx.fillText("Q1", cx + size - 25, cy - size + 20); 
+            ctx.fillText("Q3", cx - size + 10, cy + size - 10); 
+            ctx.fillText("Q2", cx + size - 25, cy + size - 10); 
+
+            currentW += (targetW - currentW) * 0.1;
+            currentI += (targetI - currentI) * 0.1;
+
+            const dotX = cx + (currentW / 100) * (size - 20);
+            const dotY = cy - (currentI / 100) * (size - 20);
+
+            ctx.beginPath(); ctx.arc(dotX, dotY, 6, 0, Math.PI*2);
+            ctx.fillStyle = (currentQ===1) ? '#55A868' : (currentQ===2) ? '#E1A551' : (currentQ===3) ? '#4C72B0' : '#C44E52';
+            ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+
+            // Inductor Charge Indicator
+            if (currentQ === 2 || currentQ === 4) {
+                const barW = 80, barH = 10;
+                ctx.fillStyle = "#eee"; ctx.fillRect(cx - 40, cy + size + 30, barW, barH);
+                ctx.strokeRect(cx - 40, cy + size + 30, barW, barH);
+                
+                let pct = 0;
+                if (motorSpeedPct >= 15) {
+                    const t = performance.now() - lastToggleTime;
+                    pct = (t / TOGGLE_INTERVAL);
+                    if (regenPhase === 1) pct = 1 - pct; 
+                    // Scale maximum charge by motor speed (low speed = low charge)
+                    pct = pct * (motorSpeedPct / 100);
+                }
+                
+                ctx.fillStyle = (regenPhase === 0) ? "#d97706" : "#059669";
+                if (motorSpeedPct < 15) ctx.fillStyle = "#999"; // Gray out if failing
+                ctx.fillRect(cx - 40, cy + size + 30, barW * Math.max(0, pct), barH);
+                
+                ctx.fillStyle = "#333"; ctx.font = "11px sans-serif";
+                ctx.fillText("Inductor Energy", cx - 40, cy + size + 55);
+            }
+        }
+
+        function render(timestamp) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (currentQ === 2 || currentQ === 4) {
+                if (timestamp - lastToggleTime > TOGGLE_INTERVAL) {
+                    regenPhase = (regenPhase === 0) ? 1 : 0;
+                    lastToggleTime = timestamp;
+                    updateDashboardTexts();
+                }
+            }
+
+            // Dash speed scales with motor speed
+            const speedMultiplier = Math.max(0, motorSpeedPct / 100);
+            const baseSpeed = (regenPhase === 1 && (currentQ===2||currentQ===4)) ? 4 : 2;
+            dashOffset += (baseSpeed * speedMultiplier); 
+            
+            drawCircuit();
+            drawChart();
+            
+            requestAnimationFrame(render);
+        }
+
+        setQuadrant(1);
+        updateDashboardTexts();
+        requestAnimationFrame(render);
+    </script>
+</body>
+</html>
