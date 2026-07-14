@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DC Motor Axis Simulation: Parameters, Dynamic Equations, and Plots</title>
+  <style>
+    :root {
+      --b-color: #4C72B0;
+      --i-color: #55A868;
+      --f-color: #C44E52;
+      --v-color: #E1A551;
+      --teal: #0f5f6a;
+      --teal-dark: #073f47;
+      --orange: #f05a18;
+      --bg-color: #f6f8fb;
+      --panel: #ffffff;
+      --panel-soft: #f4f7fb;
+      --line: #d9e2ec;
+      --text: #25313b;
+      --muted: #657786;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
+      margin: 0;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      color: var(--teal-dark);
+      margin: 0 0 6px;
+      text-align: center;
+      letter-spacing: -0.03em;
+      font-size: clamp(1.6rem, 3vw, 2.45rem);
+    }
+
+    p.subtitle {
+      color: var(--muted);
+      margin: 0 0 18px;
+      text-align: center;
+      max-width: 1040px;
+      line-height: 1.45;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: minmax(500px, 560px) minmax(380px, 470px);
+      gap: 18px;
+      justify-content: center;
+      background: white;
+      padding: 18px;
+      border-radius: 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+      max-width: 1120px;
+      width: 100%;
+    }
+
+    canvas {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    #motorCanvas {
+      width: 100%;
+      max-width: 550px;
+      height: auto;
+      display: block;
+    }
+
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .panel {
+      background: var(--panel-soft);
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+    }
+
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      color: var(--teal-dark);
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 7px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 112px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .row label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .row input {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .control-group { margin-bottom: 12px; }
+
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+      font-size: 14px;
+      margin-bottom: 5px;
+      color: #334155;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      cursor: pointer;
+      accent-color: var(--teal);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: var(--teal);
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 5px 16px rgba(15,95,106,0.20);
+    }
+
+    button.secondary {
+      background: #e6eef3;
+      color: #25444c;
+      box-shadow: none;
+      border: 1px solid #c9d8df;
+    }
+
+    button.orange {
+      background: var(--orange);
+      box-shadow: 0 5px 16px rgba(240,90,24,0.22);
+    }
+
+    button:hover { filter: brightness(0.96); transform: translateY(-1px); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .stat-box {
+      background: white;
+      padding: 9px 8px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      text-align: center;
+      min-width: 0;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .stat-value {
+      font-size: 14px;
+      font-weight: 900;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      margin-top: 4px;
+      white-space: nowrap;
+    }
+
+    .legend-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      margin-bottom: 2px;
+      font-weight: 750;
+    }
+
+    .color-box {
+      width: 13px;
+      height: 13px;
+      border-radius: 4px;
+      flex: 0 0 auto;
+    }
+
+    .plot-panel {
+      max-width: 1120px;
+      width: 100%;
+      margin-top: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+      padding: 16px;
+    }
+
+    .plot-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .plot-head h2 {
+      margin: 0;
+      font-size: 20px;
+      color: var(--teal-dark);
+    }
+
+    .plots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .plot-wrap {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fcfdff;
+      padding: 8px;
+    }
+
+    .plot-wrap canvas {
+      width: 100%;
+      height: 185px;
+      display: block;
+      border: 0;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .small-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin: 6px 0 0;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.58);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-card {
+      width: min(1080px, 96vw);
+      max-height: 92vh;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid rgba(229, 231, 235, 0.9);
+      border-radius: 22px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.24);
+    }
+
+    .modal-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 16px;
+      padding: 20px 24px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-head h2 {
+      margin: 0 0 4px;
+      color: var(--teal-dark);
+      font-size: clamp(1.35rem, 2.2vw, 2rem);
+    }
+
+    .modal-head p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .close-btn {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 1.35rem;
+      line-height: 1;
+      box-shadow: none;
+      flex: 0 0 auto;
+    }
+
+    .modal-body {
+      padding: 18px 24px 24px;
+    }
+
+    .equation-box {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 18px;
+      line-height: 1.65;
+      overflow-x: auto;
+    }
+
+    .term-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: white;
+      font-size: 13px;
+    }
+
+    .term-table th,
+    .term-table td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .term-table th {
+      background: #f1f5f9;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-size: 11px;
+    }
+
+    .term-table tr:last-child td { border-bottom: 0; }
+    .symbol { font-weight: 900; color: var(--teal-dark); white-space: nowrap; }
+    .unit { color: #1d4ed8; font-weight: 850; white-space: nowrap; }
+
+    .modal-note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid #fed7aa;
+      background: #fff7ed;
+      color: #7c2d12;
+      border-radius: 14px;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .container { grid-template-columns: 1fr; }
+      #motorCanvas { margin: 0 auto; }
+      .dashboard { width: 100%; }
+      .plots { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      body { padding: 10px; }
+      .container, .plot-panel { padding: 10px; border-radius: 14px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr 92px; }
+      .legend-grid { grid-template-columns: 1fr; }
+      .modal-body, .modal-head { padding-left: 14px; padding-right: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>DC Motor Physics: Commutation + Dynamic Model</h1>
+  <p class="subtitle">
+    Edit motor parameters, run a time-limited simulation, and observe how terminal voltage creates armature current, torque, back-EMF, speed, electrical input power, mechanical output power, and efficiency.
+  </p>
+
+  <div class="container">
+    <div>
+      <canvas id="motorCanvas" width="550" height="450"></canvas>
+      <p class="small-note">Visualization shows the split-ring commutator, brushes, current direction, Lorentz force, and shaft rotation. The numerical model uses a standard separately excited / permanent-magnet DC motor equation.</p>
+    </div>
+
+    <div class="dashboard">
+      <div class="panel">
+        <h3>Inputs <button class="secondary" type="button" onclick="openEquationModal()">Equation help</button></h3>
+        <div class="control-group">
+          <label>Terminal Voltage Vt <span id="valVoltage">12.0 V</span></label>
+          <input type="range" id="sliderVoltage" min="-24" max="24" step="0.5" value="12">
+        </div>
+        <div class="control-group">
+          <label>Load Torque TL <span id="valLoad">0.5 N·m</span></label>
+          <input type="range" id="sliderLoad" min="0" max="10" step="0.1" value="0.5">
+        </div>
+        <div class="row">
+          <label for="simTime">Simulation time [s]</label>
+          <input id="simTime" type="number" value="8" min="0.5" max="120" step="0.5">
+        </div>
+        <div class="button-row">
+          <button type="button" onclick="startSimulation()">Run / Restart</button>
+          <button class="secondary" type="button" onclick="togglePause()" id="pauseBtn">Pause</button>
+          <button class="secondary" type="button" onclick="resetSimulation()">Reset</button>
+          <button class="orange" type="button" onclick="downloadCsv()">Download CSV</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Editable Motor Parameters</h3>
+        <div class="row"><label for="paramR">Armature resistance R [Ω]</label><input id="paramR" type="number" value="2.0" min="0.01" step="0.05"></div>
+        <div class="row"><label for="paramL">Armature inductance L [H]</label><input id="paramL" type="number" value="0.05" min="0.0001" step="0.005"></div>
+        <div class="row"><label for="paramKe">Back-EMF constant Ke [V·s/rad]</label><input id="paramKe" type="number" value="0.5" min="0" step="0.01"></div>
+        <div class="row"><label for="paramKt">Torque constant Kt [N·m/A]</label><input id="paramKt" type="number" value="0.5" min="0" step="0.01"></div>
+        <div class="row"><label for="paramJ">Inertia J [kg·m²]</label><input id="paramJ" type="number" value="0.05" min="0.0001" step="0.005"></div>
+        <div class="row"><label for="paramB">Viscous friction B [N·m·s/rad]</label><input id="paramB" type="number" value="0.01" min="0" step="0.001"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Live Values</h3>
+        <div class="stats-grid">
+          <div class="stat-box" style="border-top: 3px solid var(--v-color)">
+            <div class="stat-label">Vt</div>
+            <div class="stat-value" id="statVt" style="color: var(--v-color)">0 V</div>
+          </div>
+          <div class="stat-box" style="border-top: 3px solid var(--i-color)">
+            <div class="stat-label">ia</div>
+            <div class="stat-value" id="statCurrent" style="color: var(--i-color)">0 A</div>
+          </div>
+          <div class="stat-box" style="border-top: 3px solid var(--f-color)">
+            <div class="stat-label">Te</div>
+            <div class="stat-value" id="statTorque" style="color: var(--f-color)">0 N·m</div>
+          </div>
+          <div class="stat-box" style="border-top: 3px solid var(--b-color)">
+            <div class="stat-label">ωm</div>
+            <div class="stat-value" id="statSpeed" style="color: var(--b-color)">0 rad/s</div>
+          </div>
+        </div>
+        <p class="small-note">Back-EMF: <b id="statEmf">0 V</b> · time: <b id="statTime">0.00 s</b></p>
+        <p class="small-note">Electrical input: <b id="statPe">0 W</b> · Mechanical output: <b id="statPm">0 W</b> · Efficiency: <b id="statEta">0 %</b></p>
+      </div>
+
+      <div class="panel">
+        <h3>Vector Legend</h3>
+        <div class="legend-grid">
+          <div class="legend-item"><div class="color-box" style="background: var(--b-color)"></div> Stator Flux B / d-axis</div>
+          <div class="legend-item"><div class="color-box" style="background: var(--i-color)"></div> Armature Current ia</div>
+          <div class="legend-item"><div class="color-box" style="background: var(--f-color)"></div> Lorentz Force</div>
+          <div class="legend-item"><div class="color-box" style="background: var(--v-color)"></div> Velocity / Back-EMF</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="plot-panel">
+    <div class="plot-head">
+      <h2>Simulation Plots</h2>
+      <p class="small-note">Plots update during the run and stop at the selected simulation time. Compare electrical input power with useful mechanical output power to discuss losses and efficiency.</p>
+    </div>
+    <div class="plots">
+      <div class="plot-wrap"><canvas id="plotVt" width="520" height="220"></canvas></div>
+      <div class="plot-wrap"><canvas id="plotIa" width="520" height="220"></canvas></div>
+      <div class="plot-wrap"><canvas id="plotTe" width="520" height="220"></canvas></div>
+      <div class="plot-wrap"><canvas id="plotWm" width="520" height="220"></canvas></div>
+      <div class="plot-wrap"><canvas id="plotPe" width="520" height="220"></canvas></div>
+      <div class="plot-wrap"><canvas id="plotPm" width="520" height="220"></canvas></div>
+    </div>
+  </div>
+
+  <div id="equationModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h2>DC Motor Dynamic Equations</h2>
+          <p>These equations are used by the simulation and link voltage, current, torque, speed, and load.</p>
+        </div>
+        <button class="close-btn" type="button" onclick="closeEquationModal()" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="equation-box">
+          Electrical equation:<br>
+          <b>V<sub>t</sub> = R i<sub>a</sub> + L di<sub>a</sub>/dt + e<sub>b</sub></b>, where <b>e<sub>b</sub> = K<sub>e</sub> ω<sub>m</sub></b><br><br>
+          Torque equation:<br>
+          <b>T<sub>e</sub> = K<sub>t</sub> i<sub>a</sub></b><br><br>
+          Mechanical equation:<br>
+          <b>J dω<sub>m</sub>/dt = T<sub>e</sub> − T<sub>L</sub> − Bω<sub>m</sub></b><br><br>
+          Power calculation:<br>
+          <b>P<sub>e,in</sub> = V<sub>t</sub> i<sub>a</sub></b>, 
+          <b>P<sub>dev</sub> = T<sub>e</sub>ω<sub>m</sub> ≈ e<sub>b</sub> i<sub>a</sub></b>, 
+          <b>P<sub>out</sub> = T<sub>L</sub>|ω<sub>m</sub>|</b><br>
+          <b>η ≈ P<sub>out</sub> / P<sub>e,in</sub></b> for motoring operation
+        </div>
+
+        <table class="term-table">
+          <thead>
+            <tr><th>Symbol</th><th>Meaning</th><th>Unit</th><th>Teaching interpretation</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="symbol">V<sub>t</sub></td><td>Terminal voltage applied to the armature.</td><td class="unit">V</td><td>Increasing Vt usually increases current first, then torque, then speed.</td></tr>
+            <tr><td class="symbol">i<sub>a</sub></td><td>Armature current.</td><td class="unit">A</td><td>Current directly creates electromagnetic torque through Kt.</td></tr>
+            <tr><td class="symbol">R</td><td>Armature resistance.</td><td class="unit">Ω</td><td>Causes voltage drop Ria and limits steady-state current.</td></tr>
+            <tr><td class="symbol">L</td><td>Armature inductance.</td><td class="unit">H</td><td>Slows down current change; larger L makes ia and Te rise more slowly.</td></tr>
+            <tr><td class="symbol">e<sub>b</sub></td><td>Back electromotive force.</td><td class="unit">V</td><td>Generated by rotation. As speed rises, back-EMF opposes Vt and reduces current.</td></tr>
+            <tr><td class="symbol">K<sub>e</sub></td><td>Back-EMF constant.</td><td class="unit">V·s/rad</td><td>Relates motor speed to generated back-EMF.</td></tr>
+            <tr><td class="symbol">K<sub>t</sub></td><td>Torque constant.</td><td class="unit">N·m/A</td><td>Relates armature current to torque. For SI units in an ideal PM motor, Kt and Ke have the same numeric value.</td></tr>
+            <tr><td class="symbol">T<sub>e</sub></td><td>Electromagnetic torque produced by the motor.</td><td class="unit">N·m</td><td>This torque accelerates the rotor and overcomes load/friction.</td></tr>
+            <tr><td class="symbol">T<sub>L</sub></td><td>Mechanical load torque opposing motion.</td><td class="unit">N·m</td><td>Represents external load such as belt load, fan load, pump load, or mechanical resistance.</td></tr>
+            <tr><td class="symbol">J</td><td>Total equivalent inertia seen by the motor shaft.</td><td class="unit">kg·m²</td><td>Larger J needs more torque to accelerate: acceleration torque = J dω/dt.</td></tr>
+            <tr><td class="symbol">B</td><td>Viscous friction coefficient.</td><td class="unit">N·m·s/rad</td><td>Speed-dependent torque loss. It increases as speed increases.</td></tr>
+            <tr><td class="symbol">ω<sub>m</sub></td><td>Motor angular speed.</td><td class="unit">rad/s</td><td>Speed is the result of net torque acting on inertia over time.</td></tr>
+            <tr><td class="symbol">P<sub>e,in</sub></td><td>Electrical input power from the source.</td><td class="unit">W</td><td>Computed as Vt × ia. This includes useful output, copper loss, transient energy storage, and mechanical losses.</td></tr>
+            <tr><td class="symbol">P<sub>dev</sub></td><td>Developed electromechanical conversion power inside the motor.</td><td class="unit">W</td><td>Computed as Te × ωm. In an ideal SI model, this is approximately equal to back-EMF power eb × ia.</td></tr>
+            <tr><td class="symbol">P<sub>out</sub></td><td>Useful mechanical output power delivered to the external load.</td><td class="unit">W</td><td>Computed as TL × |ωm| in this simple constant-load model.</td></tr>
+            <tr><td class="symbol">η</td><td>Approximate motoring efficiency.</td><td class="unit">%</td><td>Computed as Pout / Pe,in × 100 when Pe,in is positive. It is not shown for braking/regenerative conditions.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="modal-note">
+          Key idea for students: <b>voltage does not directly set speed instantly.</b> Voltage creates current; current creates torque; net torque accelerates inertia; increasing speed creates back-EMF that reduces current until torque balances load and friction.<br><br>
+          Power idea: <b>electrical input power is not equal to useful mechanical output power.</b> Some power is lost as copper loss <b>R i<sub>a</sub><sup>2</sup></b>, some is lost as viscous/friction loss <b>Bω<sub>m</sub><sup>2</sup></b>, and during acceleration some energy is temporarily stored in the magnetic field and rotor inertia.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('motorCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const sliderV = document.getElementById('sliderVoltage');
+    const sliderL = document.getElementById('sliderLoad');
+    const valV = document.getElementById('valVoltage');
+    const valL = document.getElementById('valLoad');
+
+    const statVt = document.getElementById('statVt');
+    const statSpeed = document.getElementById('statSpeed');
+    const statCurrent = document.getElementById('statCurrent');
+    const statTorque = document.getElementById('statTorque');
+    const statEmf = document.getElementById('statEmf');
+    const statTime = document.getElementById('statTime');
+    const statPe = document.getElementById('statPe');
+    const statPm = document.getElementById('statPm');
+    const statEta = document.getElementById('statEta');
+
+    const inputs = {
+      R: document.getElementById('paramR'),
+      L: document.getElementById('paramL'),
+      Ke: document.getElementById('paramKe'),
+      Kt: document.getElementById('paramKt'),
+      J: document.getElementById('paramJ'),
+      B: document.getElementById('paramB'),
+      simTime: document.getElementById('simTime')
+    };
+
+    const plotCanvases = {
+      vt: document.getElementById('plotVt'),
+      ia: document.getElementById('plotIa'),
+      te: document.getElementById('plotTe'),
+      wm: document.getElementById('plotWm'),
+      pe: document.getElementById('plotPe'),
+      pm: document.getElementById('plotPm')
+    };
+
+    let voltage = parseFloat(sliderV.value);
+    let loadTorque = parseFloat(sliderL.value);
+
+    let omega = 0;
+    let theta = 0;
+    let current = 0;
+    let emf = 0;
+    let motorTorque = 0;
+    let electricalPower = 0;
+    let developedPower = 0;
+    let mechanicalOutputPower = 0;
+    let efficiency = 0;
+    let simT = 0;
+    let running = true;
+    let paused = false;
+    let lastTime = performance.now();
+
+    let history = [];
+
+    const B_COLOR = '#4C72B0';
+    const I_COLOR = '#55A868';
+    const F_COLOR = '#C44E52';
+    const V_COLOR = '#E1A551';
+
+    function params() {
+      return {
+        R: Math.max(0.0001, parseFloat(inputs.R.value) || 2),
+        L: Math.max(0.000001, parseFloat(inputs.L.value) || 0.05),
+        Ke: parseFloat(inputs.Ke.value) || 0,
+        Kt: parseFloat(inputs.Kt.value) || 0,
+        J: Math.max(0.000001, parseFloat(inputs.J.value) || 0.05),
+        B: Math.max(0, parseFloat(inputs.B.value) || 0),
+        simTime: Math.max(0.05, parseFloat(inputs.simTime.value) || 8)
+      };
+    }
+
+    sliderV.addEventListener('input', (e) => {
+      voltage = parseFloat(e.target.value);
+      valV.textContent = voltage.toFixed(1) + " V";
+    });
+
+    sliderL.addEventListener('input', (e) => {
+      loadTorque = parseFloat(e.target.value);
+      valL.textContent = loadTorque.toFixed(1) + " N·m";
+    });
+
+    function startSimulation() {
+      resetSimulation();
+      running = true;
+      paused = false;
+      document.getElementById('pauseBtn').textContent = "Pause";
+      lastTime = performance.now();
+    }
+
+    function resetSimulation() {
+      omega = 0;
+      theta = 0;
+      current = 0;
+      emf = 0;
+      motorTorque = 0;
+      electricalPower = 0;
+      developedPower = 0;
+      mechanicalOutputPower = 0;
+      efficiency = 0;
+      simT = 0;
+      history = [];
+      running = true;
+      paused = false;
+      document.getElementById('pauseBtn').textContent = "Pause";
+      updateStats();
+      render();
+      drawAllPlots();
+    }
+
+    function togglePause() {
+      paused = !paused;
+      document.getElementById('pauseBtn').textContent = paused ? "Resume" : "Pause";
+      lastTime = performance.now();
+    }
+
+    function openEquationModal() {
+      document.getElementById('equationModal').classList.add('open');
+    }
+
+    function closeEquationModal() {
+      document.getElementById('equationModal').classList.remove('open');
+    }
+
+    document.getElementById('equationModal').addEventListener('click', (event) => {
+      if (event.target.id === 'equationModal') closeEquationModal();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeEquationModal();
+    });
+
+    function drawArrow(x0, y0, x1, y1, color, width, label, offsetLabel = 15) {
+      const headlen = 16;
+      const dx = x1 - x0, dy = y1 - y0;
+      const angle = Math.atan2(dy, dx);
+      const len = Math.sqrt(dx*dx + dy*dy);
+      if (len < 0.1) return;
+
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.lineTo(x1 - headlen * Math.cos(angle - Math.PI / 6), y1 - headlen * Math.sin(angle - Math.PI / 6));
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 - headlen * Math.cos(angle + Math.PI / 6), y1 - headlen * Math.sin(angle + Math.PI / 6));
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
+
+      if (label) {
+        ctx.fillStyle = color;
+        ctx.font = "bold 14px sans-serif";
+        ctx.fillText(label, x1 + offsetLabel * Math.cos(angle) - 5, y1 + offsetLabel * Math.sin(angle) + 5);
+      }
+    }
+
+    function drawCross(x, y, radius, color) {
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, 2*Math.PI);
+      ctx.fillStyle = "white";
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x - radius*0.6, y - radius*0.6);
+      ctx.lineTo(x + radius*0.6, y + radius*0.6);
+      ctx.moveTo(x + radius*0.6, y - radius*0.6);
+      ctx.lineTo(x - radius*0.6, y + radius*0.6);
+      ctx.stroke();
+    }
+
+    function drawDot(x, y, radius, color) {
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, 2*Math.PI);
+      ctx.fillStyle = "white";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, y, radius*0.4, 0, 2*Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2 + 20;
+
+      // Stator poles
+      ctx.fillStyle = "#4c8bd9";
+      ctx.strokeStyle = "#999";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(60, cy - 80);
+      ctx.lineTo(cx - 80, cy - 60);
+      ctx.quadraticCurveTo(cx - 100, cy, cx - 80, cy + 60);
+      ctx.lineTo(60, cy + 80);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#333";
+      ctx.font = "bold 24px sans-serif";
+      ctx.fillText("N", 70, cy + 8);
+
+      ctx.fillStyle = "#d94c4c";
+      ctx.beginPath();
+      ctx.moveTo(canvas.width - 60, cy - 80);
+      ctx.lineTo(cx + 80, cy - 60);
+      ctx.quadraticCurveTo(cx + 100, cy, cx + 80, cy + 60);
+      ctx.lineTo(canvas.width - 60, cy + 80);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#333";
+      ctx.fillText("S", canvas.width - 90, cy + 8);
+
+      // d-axis / flux
+      drawArrow(cx - 160, cy, cx + 160, cy, "rgba(76, 114, 176, 0.45)", 10, "");
+      ctx.fillStyle = B_COLOR;
+      ctx.font = "bold 14px sans-serif";
+      ctx.fillText("d-axis / B field", cx + 102, cy + 30);
+
+      // Rotor core
+      ctx.beginPath();
+      ctx.arc(cx, cy, 65, 0, 2*Math.PI);
+      ctx.fillStyle = "#f8f8f8";
+      ctx.fill();
+      ctx.strokeStyle = "#ccc";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Commutator
+      const commRadius = 22;
+      const gap = 0.15;
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = "#C98149";
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, commRadius, theta + gap, theta + Math.PI - gap);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, commRadius, theta + Math.PI + gap, theta + 2*Math.PI - gap);
+      ctx.stroke();
+
+      // Brushes
+      ctx.fillStyle = "#444";
+      ctx.fillRect(cx - 8, cy - commRadius - 10, 16, 10);
+      ctx.fillRect(cx - 8, cy + commRadius, 16, 10);
+
+      // Terminal source labels
+      ctx.fillStyle = voltage >= 0 ? "#0f5f6a" : "#C44E52";
+      ctx.font = "bold 12px sans-serif";
+      ctx.fillText(voltage >= 0 ? "+ brush" : "- brush", cx + 14, cy - commRadius - 12);
+      ctx.fillText(voltage >= 0 ? "- brush" : "+ brush", cx + 14, cy + commRadius + 20);
+
+      // Shaft center
+      ctx.beginPath();
+      ctx.arc(cx, cy, 8, 0, 2*Math.PI);
+      ctx.fillStyle = "#888";
+      ctx.fill();
+
+      // Coil sides
+      const r = 55;
+      const x1 = cx + r * Math.cos(theta);
+      const y1 = cy + r * Math.sin(theta);
+      const x2 = cx + r * Math.cos(theta + Math.PI);
+      const y2 = cy + r * Math.sin(theta + Math.PI);
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = "#bbb";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      const isWire1Right = Math.cos(theta) > 0;
+      const drawWireCurrent = (x, y, isRight) => {
+        if (Math.abs(current) < 0.05) {
+          ctx.beginPath();
+          ctx.arc(x, y, 10, 0, 2*Math.PI);
+          ctx.fillStyle = "white";
+          ctx.fill();
+          ctx.strokeStyle = "#888";
+          ctx.stroke();
+          return 0;
+        }
+        const actualCurrentIn = (isRight && current > 0) || (!isRight && current < 0);
+        if (actualCurrentIn) drawCross(x, y, 10, I_COLOR);
+        else drawDot(x, y, 10, I_COLOR);
+        return actualCurrentIn ? 1 : -1;
+      };
+
+      const dir1 = drawWireCurrent(x1, y1, isWire1Right);
+      const dir2 = drawWireCurrent(x2, y2, !isWire1Right);
+
+      // Force vectors
+      const forceMag = Math.min(Math.abs(current) * 5, 70);
+      if (forceMag > 0) {
+        if (dir1 !== 0) drawArrow(x1, y1, x1, y1 + dir1 * forceMag, F_COLOR, 2, "F", 18);
+        if (dir2 !== 0) drawArrow(x2, y2, x2, y2 + dir2 * forceMag, F_COLOR, 2, "F", 18);
+      }
+
+      ctx.fillStyle = "#334155";
+      ctx.font = "bold 13px sans-serif";
+      ctx.fillText("Split-ring commutator", cx - 70, cy + 118);
+      ctx.fillText("ia creates Te", cx - 45, cy - 112);
+    }
+
+    function updatePhysics(dt) {
+      const p = params();
+      const simTime = p.simTime;
+
+      if (simT >= simTime) {
+        running = false;
+        return;
+      }
+
+      // Run in small substeps for stable electrical dynamics.
+      const h = 0.001;
+      let remain = Math.min(dt, simTime - simT);
+
+      while (remain > 1e-9) {
+        const step = Math.min(h, remain);
+
+        emf = p.Ke * omega;
+        const dia = (voltage - p.R * current - emf) / p.L;
+        current += dia * step;
+
+        motorTorque = p.Kt * current;
+
+        // Load torque opposes motion; at standstill it opposes the starting direction.
+        let direction = Math.sign(omega);
+        if (Math.abs(omega) < 1e-5) direction = Math.sign(motorTorque || voltage || 1);
+        const actualLoad = loadTorque * direction;
+
+        const netTorque = motorTorque - actualLoad - p.B * omega;
+        const alpha = netTorque / p.J;
+
+        omega += alpha * step;
+
+        // Simple no-runaway zero crossing friction handling for heavy load near zero speed
+        if (Math.abs(omega) < 1e-4 && Math.abs(motorTorque) < loadTorque) {
+          omega = 0;
+        }
+
+        theta += omega * step;
+        simT += step;
+        remain -= step;
+      }
+
+      electricalPower = voltage * current;
+      developedPower = motorTorque * omega;
+      mechanicalOutputPower = loadTorque * Math.abs(omega);
+      efficiency = (electricalPower > 1e-6 && mechanicalOutputPower >= 0)
+        ? Math.max(0, Math.min(100, (mechanicalOutputPower / electricalPower) * 100))
+        : 0;
+
+      history.push({
+        t: simT,
+        vt: voltage,
+        ia: current,
+        te: motorTorque,
+        wm: omega,
+        eb: emf,
+        pe: electricalPower,
+        pdev: developedPower,
+        pm: mechanicalOutputPower,
+        eta: efficiency
+      });
+
+      // Keep drawing performance safe
+      if (history.length > 2500) {
+        history = history.filter((_, idx) => idx % 2 === 0);
+      }
+    }
+
+    function updateStats() {
+      statVt.textContent = voltage.toFixed(1) + " V";
+      statCurrent.textContent = current.toFixed(2) + " A";
+      statTorque.textContent = motorTorque.toFixed(2) + " N·m";
+      statSpeed.textContent = omega.toFixed(1) + " rad/s";
+      statEmf.textContent = emf.toFixed(1) + " V";
+      statTime.textContent = simT.toFixed(2) + " s";
+      statPe.textContent = electricalPower.toFixed(1) + " W";
+      statPm.textContent = mechanicalOutputPower.toFixed(1) + " W";
+      statEta.textContent = efficiency.toFixed(1) + " %";
+    }
+
+    function drawPlot(canvasEl, key, label, unit, color) {
+      const p = params();
+      const c = canvasEl;
+      const g = c.getContext('2d');
+      const w = c.width;
+      const h = c.height;
+      const padL = 50;
+      const padR = 15;
+      const padT = 28;
+      const padB = 34;
+
+      g.clearRect(0,0,w,h);
+      g.fillStyle = "#fff";
+      g.fillRect(0,0,w,h);
+
+      const xs = history.map(d => d.t);
+      const ys = history.map(d => d[key]);
+      const tMax = p.simTime;
+
+      let yMin = Math.min(0, ...ys);
+      let yMax = Math.max(0, ...ys);
+      if (Math.abs(yMax - yMin) < 1e-9) {
+        yMax += 1;
+        yMin -= 1;
+      }
+      const margin = (yMax - yMin) * 0.12;
+      yMax += margin;
+      yMin -= margin;
+
+      const xMap = t => padL + (t / tMax) * (w - padL - padR);
+      const yMap = y => padT + (yMax - y) / (yMax - yMin) * (h - padT - padB);
+
+      // grid
+      g.strokeStyle = "#e5edf3";
+      g.lineWidth = 1;
+      g.font = "11px sans-serif";
+      g.fillStyle = "#64748b";
+
+      for (let i=0; i<=4; i++) {
+        const yy = padT + i * (h-padT-padB)/4;
+        g.beginPath(); g.moveTo(padL, yy); g.lineTo(w-padR, yy); g.stroke();
+        const val = yMax - i*(yMax-yMin)/4;
+        g.fillText(val.toFixed(Math.abs(val) >= 10 ? 0 : 2), 6, yy + 4);
+      }
+
+      for (let i=0; i<=4; i++) {
+        const xx = padL + i * (w-padL-padR)/4;
+        g.beginPath(); g.moveTo(xx, padT); g.lineTo(xx, h-padB); g.stroke();
+        const tv = i * tMax / 4;
+        g.fillText(tv.toFixed(1), xx - 8, h - 10);
+      }
+
+      // axes
+      g.strokeStyle = "#9fb0bf";
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.moveTo(padL, padT);
+      g.lineTo(padL, h-padB);
+      g.lineTo(w-padR, h-padB);
+      g.stroke();
+
+      // zero line
+      if (yMin < 0 && yMax > 0) {
+        g.strokeStyle = "#cbd5e1";
+        g.setLineDash([4,4]);
+        g.beginPath();
+        g.moveTo(padL, yMap(0));
+        g.lineTo(w-padR, yMap(0));
+        g.stroke();
+        g.setLineDash([]);
+      }
+
+      // curve
+      if (history.length > 1) {
+        g.strokeStyle = color;
+        g.lineWidth = 2.4;
+        g.beginPath();
+        history.forEach((d, idx) => {
+          const x = xMap(d.t);
+          const y = yMap(d[key]);
+          if (idx === 0) g.moveTo(x,y);
+          else g.lineTo(x,y);
+        });
+        g.stroke();
+      }
+
+      // title
+      g.fillStyle = color;
+      g.font = "bold 14px sans-serif";
+      g.fillText(label + " [" + unit + "]", padL, 18);
+
+      g.fillStyle = "#64748b";
+      g.font = "11px sans-serif";
+      g.fillText("time [s]", w - 70, h - 10);
+    }
+
+    function drawAllPlots() {
+      drawPlot(plotCanvases.vt, "vt", "Vt", "V", V_COLOR);
+      drawPlot(plotCanvases.ia, "ia", "ia", "A", I_COLOR);
+      drawPlot(plotCanvases.te, "te", "Te", "N·m", F_COLOR);
+      drawPlot(plotCanvases.wm, "wm", "ωm", "rad/s", B_COLOR);
+      drawPlot(plotCanvases.pe, "pe", "Electrical input power Pe,in", "W", "#7C3AED");
+      drawPlot(plotCanvases.pm, "pm", "Mechanical output power Pout", "W", "#0F766E");
+    }
+
+    function downloadCsv() {
+      const header = "time_s,Vt_V,ia_A,Te_Nm,wm_rad_s,back_emf_V,Pe_in_W,Pdev_W,Pout_W,efficiency_percent\n";
+      const rows = history.map(d => [
+        d.t.toFixed(6),
+        d.vt.toFixed(6),
+        d.ia.toFixed(6),
+        d.te.toFixed(6),
+        d.wm.toFixed(6),
+        d.eb.toFixed(6),
+        d.pe.toFixed(6),
+        d.pdev.toFixed(6),
+        d.pm.toFixed(6),
+        d.eta.toFixed(6)
+      ].join(",")).join("\n");
+      const blob = new Blob([header + rows], {type: "text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dc_motor_simulation.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function loop(timestamp) {
+      const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+      lastTime = timestamp;
+
+      if (running && !paused) {
+        updatePhysics(dt);
+      }
+
+      updateStats();
+      render();
+
+      // Drawing every frame is okay, but decimate visually by time for plot cost
+      drawAllPlots();
+
+      requestAnimationFrame(loop);
+    }
+
+    resetSimulation();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
