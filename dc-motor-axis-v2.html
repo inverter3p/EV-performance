@@ -898,7 +898,7 @@
       }
 
       // Run in small substeps for stable electrical dynamics.
-      const h = 0.001;
+      const h = 0.00005;
       let remain = Math.min(dt, simTime - simT);
 
       while (remain > 1e-9) {
