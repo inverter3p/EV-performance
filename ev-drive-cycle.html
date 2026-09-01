@@ -95,6 +95,16 @@
         box-sizing: border-box;
         background-color: var(--primary-bg);
       }
+      .preset-note {
+        margin-top: 8px;
+        padding: 9px 10px;
+        border-left: 3px solid var(--accent-color);
+        border-radius: 3px;
+        background: #f5f8ff;
+        color: #596579;
+        font-size: 0.78em;
+        line-height: 1.45;
+      }
       .slider-group {
         display: flex;
         align-items: center;
@@ -275,8 +285,77 @@
       #nedc-btn.active {
         background-color: #f1a55f;
       }
+      #cltc-btn.active {
+        background-color: #7c3aed;
+      }
       .plot-controls {
         margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .inline-help-btn {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 2px solid var(--accent-color);
+        background: var(--secondary-bg);
+        color: var(--accent-color);
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+      .inline-help-btn:hover,
+      .inline-help-btn:focus-visible {
+        color: white;
+        background: var(--accent-color);
+        outline: none;
+      }
+      .heading-inline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .heading-inline h3 {
+        margin-bottom: 0;
+      }
+      .comparison-subtext {
+        margin-top: 6px;
+        color: #6c757d;
+        font-size: 0.75em;
+        line-height: 1.35;
+      }
+      .comparison-good { color: #198754 !important; }
+      .comparison-warn { color: #b45309 !important; }
+      .help-table-wrap { overflow-x: auto; }
+      .help-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88em;
+      }
+      .help-table th,
+      .help-table td {
+        border: 1px solid var(--border-color);
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+      .help-table th { background: #eef4ff; }
+      .equation-box {
+        padding: 10px 12px;
+        margin: 10px 0;
+        border-left: 3px solid var(--accent-color);
+        border-radius: 4px;
+        background: #f5f8ff;
+        font-family: "Cambria Math", "Times New Roman", serif;
+        overflow-x: auto;
+      }
+      .variable-list {
+        margin: 8px 0 0;
+        padding-left: 20px;
       }
 
       .modal {
@@ -444,12 +523,32 @@
             <label for="model-select">Select Vehicle Model</label>
             <select id="model-select">
               <option value="custom">Custom Model</option>
-              <option value="tesla_model_3_lr">Tesla Model 3 Highland (RWD)</option>
-              <option value="bmw_i4_edrive40">BMW i4 (eDrive40)</option>
-              <option value="porsche_taycan_rwd">Porsche Taycan (RWD)</option>
-              <option value="tesla_model_y_lr">Tesla Model Y (LR)</option>
-              <option value="bmw_ix_xdrive50">BMW iX (xDrive50)</option>
+              <optgroup label="Thailand Top 15 BEV — Jan–Jul 2026">
+                <option value="jaecoo_5_ev">#1 JAECOO 5 EV</option>
+                <option value="byd_dolphin">#2 BYD Dolphin</option>
+                <option value="byd_atto_3">#3 BYD ATTO 3</option>
+                <option value="mg_s5_ev">#4 MG S5 EV</option>
+                <option value="geely_ex2">#5 GEELY EX2</option>
+                <option value="mg4_electric">#6 MG4 Electric</option>
+                <option value="deepal_s05">#7 DEEPAL S05 BEV</option>
+                <option value="aion_ut">#8 GAC AION UT</option>
+                <option value="chery_v23">#9 CHERY V23</option>
+                <option value="aion_v">#10 GAC AION V</option>
+                <option value="tesla_model_3_rwd">#11 Tesla Model 3</option>
+                <option value="jaecoo_6_ev">#12 JAECOO 6 EV</option>
+                <option value="tesla_model_y_rwd">#13 Tesla Model Y</option>
+                <option value="byd_sealion_7">#14 BYD SEALION 7</option>
+                <option value="changan_lumin">#15 CHANGAN LUMIN</option>
+              </optgroup>
+              <optgroup label="Engineering reference vehicles">
+                <option value="bmw_i4_edrive40">BMW i4 eDrive40</option>
+                <option value="porsche_taycan_rwd">Porsche Taycan RWD</option>
+                <option value="bmw_ix_xdrive50">BMW iX xDrive50</option>
+              </optgroup>
             </select>
+            <div id="preset-note" class="preset-note">
+              Enter a custom vehicle or choose a documented preset.
+            </div>
           </div>
 
           <div class="heading-with-help">
@@ -459,7 +558,7 @@
             </button>
           </div>
           <div class="form-group">
-            <label for="mass">Vehicle Mass (kg)</label
+            <label for="mass">Vehicle Simulation Mass (kg)</label
             ><input type="number" id="mass" value="1750" min="500" step="1" />
           </div>
           <div class="form-group">
@@ -680,10 +779,23 @@
               <div class="label" id="summary-range-label">Est. Range</div>
               <div class="value" id="summary-range">- km</div>
             </div>
+            <div class="metric-card">
+              <div class="label" id="summary-claimed-range-label">Claimed Range</div>
+              <div class="value" id="summary-claimed-range">—</div>
+              <div class="comparison-subtext" id="summary-range-difference">Select a vehicle preset</div>
+            </div>
+            <div class="metric-card">
+              <div class="label">Claimed 0–100 km/h</div>
+              <div class="value" id="summary-claimed-accel">—</div>
+              <div class="comparison-subtext">Manufacturer claim for the selected trim</div>
+            </div>
           </section>
           <section class="plot-wrapper">
             <div class="plot-header">
-              <h3>Drive Cycle Speed Profile</h3>
+              <div class="heading-inline">
+                <h3>Drive Cycle Speed Profile</h3>
+                <button type="button" class="inline-help-btn" id="cycle-help-btn" aria-label="Driving cycle guide" title="Driving cycle guide">?</button>
+              </div>
               <div id="drive-cycle-selector-container">
                 <button
                   type="button"
@@ -709,6 +821,15 @@
                 >
                   WLTP
                 </button>
+                <button
+                  type="button"
+                  class="cycle-btn"
+                  id="cltc-btn"
+                  data-cycle="cltc"
+                  title="China Light-Duty Vehicle Test Cycle — Passenger Car"
+                >
+                  CLTC-P
+                </button>
               </div>
             </div>
             <canvas id="plot-canvas-speed"></canvas>
@@ -727,6 +848,7 @@
                   Cumulative Energy (kWh)
                 </option>
               </select>
+              <button type="button" class="inline-help-btn" id="metric-help-btn" aria-label="Explain selected metric" title="Explain selected metric">?</button>
             </div>
             <canvas id="plot-canvas-secondary"></canvas>
           </section>
@@ -845,6 +967,7 @@
                 <p id="accel-result-title">Time to accelerate:</p>
                 <p class="value" id="accel-result-val">- s</p>
                 <p id="accel-result-slope">on a <strong>0°</strong> slope.</p>
+                <p class="comparison-subtext" id="accel-claim-comparison">Select a vehicle preset to compare with its claimed 0–100 time.</p>
               </div>
             </div>
             <div
@@ -969,11 +1092,36 @@
           <span class="close-btn" id="close-help-btn">×</span>
         </header>
         <div class="modal-body">
+          <h3>0. Vehicle Presets</h3>
+          <p>
+            Thailand Top 15 is ranked by accumulated BEV registrations from
+            January–July 2026. Each model uses one named representative trim.
+            Manufacturer-published mass, battery, power, torque, and tyre data
+            are used where available. Parameters commonly not disclosed—such
+            as frontal area, reduction ratio, rolling resistance, cycle-average
+            efficiency, and regenerative C-rate—are engineering estimates.
+            Selecting a preset shows its exact basis below the model selector.
+            Published pack capacity is used when usable capacity is not
+            separately disclosed, so simulated range remains an engineering
+            comparison rather than an official homologation result.
+            Selecting a preset also loads its effective fixed-regeneration
+            assumption; this can still be changed in Configure Strategy.
+            Ranking source:
+            <a
+              href="https://www.car250.com/07-th-2026-1.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Thailand registration summary</a
+            >.
+          </p>
           <h3>1. Vehicle Mass & Inertia</h3>
           <ul>
             <li>
-              <strong>Vehicle Mass (kg):</strong> The total mass of the vehicle,
-              including the battery, driver, and any payload.
+              <strong>Vehicle Simulation Mass (kg):</strong> Presets use the
+              published curb/kerb mass, including the traction battery but not
+              occupants or cargo. Add driver and payload mass manually when a
+              loaded-vehicle result is required; doing so converts the preset
+              to a custom model.
             </li>
           </ul>
           <h3>2. Aerodynamic Properties</h3>
@@ -1020,8 +1168,9 @@
           <ul>
             <li>
               <strong>Battery Capacity (kWh):</strong> The total amount of
-              usable energy stored in the battery pack. This is the primary
-              determinant of vehicle range.
+              energy available to the model. Enter usable capacity when known;
+              otherwise a published nominal pack capacity may slightly
+              overestimate range.
             </li>
             <li>
               <strong>Max Regenerative Braking Rate (C-rate):</strong> The
@@ -1031,6 +1180,52 @@
             </li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <div id="cycle-help-modal" class="modal">
+      <div class="modal-content" style="max-width: 920px">
+        <header class="modal-header">
+          <h2>Driving Cycle Guide</h2>
+          <span class="close-btn" id="close-cycle-help-btn">×</span>
+        </header>
+        <div class="modal-body">
+          <p>
+            A driving cycle is a prescribed second-by-second speed trace. The
+            same vehicle can produce different consumption and range because
+            the cycles contain different speeds, stops and acceleration events.
+          </p>
+          <div class="help-table-wrap">
+            <table class="help-table">
+              <thead>
+                <tr>
+                  <th>Cycle</th><th>Duration</th><th>Distance</th><th>Average speed</th><th>Maximum speed</th><th>Main character</th><th>Typical interpretation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>NEDC</strong></td><td>1,180 s</td><td>11.08 km</td><td>33.8 km/h</td><td>120 km/h</td><td>Gentle acceleration, long steady sections and many low-load phases.</td><td>Older European cycle; often produces an optimistic EV range.</td></tr>
+                <tr><td><strong>FTP-75</strong></td><td>1,877 s</td><td>17.67 km</td><td>33.9 km/h</td><td>90.7 km/h</td><td>Urban stop–start operation with many transients.</td><td>Useful for city-driving energy and regenerative-braking behaviour.</td></tr>
+                <tr><td><strong>WLTP</strong></td><td>1,800 s</td><td>23.27 km</td><td>46.5 km/h</td><td>131.3 km/h</td><td>Low, medium, high and extra-high speed phases with stronger load.</td><td>Current broad mixed-driving comparison; usually more demanding than NEDC.</td></tr>
+                <tr><td><strong>CLTC-P</strong></td><td>1,800 s</td><td>14.48 km</td><td>29.0 km/h</td><td>114 km/h</td><td>Urban-heavy trace with frequent low-speed changes and stops.</td><td>Chinese passenger-car cycle; claimed range can be higher than WLTP.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="comparison-subtext">
+            Simulator scope: flat road, standard air density and no HVAC or
+            other auxiliary load. Compare claimed and simulated range only when
+            the selected cycle matches the claim's homologation cycle.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div id="metric-help-modal" class="modal">
+      <div class="modal-content" style="max-width: 760px">
+        <header class="modal-header">
+          <h2 id="metric-help-title">Metric Equation</h2>
+          <span class="close-btn" id="close-metric-help-btn">×</span>
+        </header>
+        <div class="modal-body" id="metric-help-body"></div>
       </div>
     </div>
 
@@ -1131,6 +1326,50 @@
           [1160, 0],
           [1180, 0],
         ];
+        // CLTC-P passenger-car cycle: 1,800 s, 14.48 km, 114 km/h maximum.
+        // The published time-speed profile is stored as signed 0.1 km/h deltas
+        // to keep this single-file simulator compact. The decoder restores
+        // 1,801 samples at 1 Hz.
+        const CLTC_DELTA_TENTHS_BASE64 = `
+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
+        `;
+        const RAW_CLTC_VELOCITIES = (() => {
+          const encoded = CLTC_DELTA_TENTHS_BASE64.replace(/\s/g, "");
+          const deltas = Uint8Array.from(atob(encoded), (char) =>
+            char.charCodeAt(0)
+          );
+          const velocities = [0];
+          let speedTenths = 0;
+          deltas.forEach((byte) => {
+            speedTenths += byte > 127 ? byte - 256 : byte;
+            velocities.push(speedTenths / 10);
+          });
+          return velocities;
+        })();
+
         const RAW_WLTP_VELOCITIES = [
           0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 1.7,
           5.4, 9.9, 13.1, 16.9, 21.7, 26.0, 27.5, 28.1, 28.3, 28.8, 29.1, 30.8,
@@ -1453,42 +1692,409 @@
           26.4, 21.12, 16.48, 11.52, 6.4, 1.6, 0,
         ];
         const VEHICLE_PRESETS = {
-          tesla_model_3_lr: {
-            name: "Tesla Model 3 Highland (RWD)",
-            mass: 1828,
-            cd: 0.22,
-            frontalArea: 2.22,
+          jaecoo_5_ev: {
+            name: "JAECOO 5 EV Long Range Max",
+            salesRank: 1,
+            salesUnits: 13424,
+            claimedRange: 461,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 7.7,
+            mass: 1710,
+            cd: 0.287,
+            frontalArea: 2.55,
+            wheelRadius: 0.357,
+            crr: 0.0095,
+            gearRatio: 10.5,
+            batteryCapacity: 58.9,
+            maxRegenCRate: 1.5,
+            simpleRegenPercent: 60,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 288,
+            maxPower: 155,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#1 Thailand BEV registrations Jan–Jul 2026: 13,424. Representative trim: Long Range Max. Published: 58.9 kWh, 155 kW, 288 Nm, 235/55 R18. Mass, CdA, ratio and loss parameters are engineering estimates.",
+          },
+          byd_dolphin: {
+            name: "BYD Dolphin Extended Range",
+            salesRank: 2,
+            salesUnits: 9229,
+            claimedRange: 490,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 7.0,
+            mass: 1658,
+            cd: 0.218,
+            frontalArea: 2.25,
+            wheelRadius: 0.318,
+            crr: 0.009,
+            gearRatio: 10.16,
+            batteryCapacity: 60.48,
+            maxRegenCRate: 1.5,
+            simpleRegenPercent: 65,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 310,
+            maxPower: 150,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#2 Thailand BEV registrations Jan–Jul 2026: 9,229. Representative trim: Extended Range. Published: 1,658 kg, 60.48 kWh, 150 kW, 310 Nm, 205/50 R17. CdA, ratio and loss parameters are engineering estimates.",
+          },
+          byd_atto_3: {
+            name: "BYD ATTO 3 Extended Range",
+            salesRank: 3,
+            salesUnits: 7959,
+            claimedRange: 480,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 7.3,
+            mass: 1750,
+            cd: 0.29,
+            frontalArea: 2.57,
+            wheelRadius: 0.347,
+            crr: 0.0095,
+            gearRatio: 10.16,
+            batteryCapacity: 60.48,
+            maxRegenCRate: 1.5,
+            simpleRegenPercent: 65,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 310,
+            maxPower: 150,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#3 Thailand BEV registrations Jan–Jul 2026: 7,959. Representative trim: Extended Range. Published: 1,750 kg, 60.48 kWh, 150 kW, 310 Nm, 215/55 R18. CdA, ratio and loss parameters are engineering estimates.",
+          },
+          mg_s5_ev: {
+            name: "MG S5 EV V+",
+            salesRank: 4,
+            salesUnits: 7636,
+            claimedRange: 550,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 6.1,
+            mass: 1745,
+            cd: 0.27,
+            frontalArea: 2.48,
+            wheelRadius: 0.347,
+            crr: 0.0095,
+            gearRatio: 10.47,
+            batteryCapacity: 62.2,
+            maxRegenCRate: 1.6,
+            simpleRegenPercent: 65,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 350,
+            maxPower: 180,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#4 Thailand BEV registrations Jan–Jul 2026: 7,636. Representative trim: V+. Published: 62.2 kWh, 180 kW, 350 Nm, 215/55 R18. Mass, CdA, ratio and loss parameters are engineering estimates.",
+          },
+          geely_ex2: {
+            name: "GEELY EX2 Max",
+            salesRank: 5,
+            salesUnits: 6961,
+            claimedRange: 395,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 11.5,
+            mass: 1300,
+            cd: 0.28,
+            frontalArea: 2.35,
+            wheelRadius: 0.324,
+            crr: 0.009,
+            gearRatio: 11.57,
+            batteryCapacity: 39.4,
+            maxRegenCRate: 1.4,
+            simpleRegenPercent: 60,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 150,
+            maxPower: 85,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#5 Thailand BEV registrations Jan–Jul 2026: 6,961. Representative trim: Max. Published: 1,300 kg, 39.4 kWh, 85 kW, 150 Nm, 205/65 R15. CdA, ratio and loss parameters are engineering estimates.",
+          },
+          mg4_electric: {
+            name: "MG4 Electric X Long Range (MY2026)",
+            salesRank: 6,
+            salesUnits: 6893,
+            claimedRange: 540,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 6.85,
+            mass: 1748,
+            cd: 0.279,
+            frontalArea: 2.29,
             wheelRadius: 0.334,
             crr: 0.009,
-            gearRatio: 9.0,
-            batteryCapacity: 75,
-            maxRegenCRate: 1.0,
-            motorEff: 92,
-            drivetrainEff: 90,
-            maxTorque: 450,
-            maxPower: 235,
+            gearRatio: 11.83,
+            batteryCapacity: 62.2,
+            maxRegenCRate: 1.6,
+            simpleRegenPercent: 65,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 350,
+            maxPower: 180,
             massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#6 Thailand BEV registrations Jan–Jul 2026: 6,893. Representative trim: X Long Range MY2026. Published: 62.2 kWh, 180 kW, 350 Nm, 235/45 R18. Mass, CdA, ratio and loss parameters are engineering estimates.",
+          },
+          deepal_s05: {
+            name: "DEEPAL S05 BEV",
+            salesRank: 7,
+            salesUnits: 6006,
+            claimedRange: 470,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 7.3,
+            mass: 1825,
+            cd: 0.25,
+            frontalArea: 2.55,
+            wheelRadius: 0.364,
+            crr: 0.0095,
+            gearRatio: 9.07,
+            batteryCapacity: 56.12,
+            maxRegenCRate: 1.6,
+            simpleRegenPercent: 65,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 320,
+            maxPower: 175,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#7 Thailand BEV registrations Jan–Jul 2026: 6,006. Representative Thai BEV trim. Published: 56.12 kWh, 175 kW, 320 Nm. Mass, tyre radius, CdA, ratio and loss parameters are engineering estimates.",
+          },
+          aion_ut: {
+            name: "GAC AION UT 500 Premium",
+            salesRank: 8,
+            salesUnits: 5468,
+            claimedRange: 500,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 7.3,
+            mass: 1700,
+            cd: 0.21,
+            frontalArea: 2.38,
+            wheelRadius: 0.334,
+            crr: 0.009,
+            gearRatio: 10.5,
+            batteryCapacity: 60,
+            maxRegenCRate: 1.5,
+            simpleRegenPercent: 65,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 210,
+            maxPower: 150,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#8 Thailand BEV registrations Jan–Jul 2026: 5,468. Representative trim: 500 Premium. Published: 1,700 kg, 60 kWh, 150 kW, 210 Nm, 215/55 R17. CdA, ratio and loss parameters are engineering estimates.",
+          },
+          chery_v23: {
+            name: "CHERY V23 2WD Plus",
+            salesRank: 9,
+            salesUnits: 5398,
+            claimedRange: 360,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 11.0,
+            mass: 1735,
+            cd: 0.35,
+            frontalArea: 3.05,
+            wheelRadius: 0.381,
+            crr: 0.0105,
+            gearRatio: 10.7,
+            batteryCapacity: 59.93,
+            maxRegenCRate: 1.4,
+            simpleRegenPercent: 55,
+            motorEff: 93,
+            drivetrainEff: 95,
+            maxTorque: 180,
+            maxPower: 100,
+            massFactor: 6,
+            efficiency: 91,
+            presetNote:
+              "#9 Thailand BEV registrations Jan–Jul 2026: 5,398. Representative trim: 2WD Plus. Published: 59.93 kWh, 100 kW, 180 Nm. Mass, tyre radius, CdA, ratio and loss parameters are engineering estimates.",
+          },
+          aion_v: {
+            name: "GAC AION V 602 Luxury",
+            salesRank: 10,
+            salesUnits: 4062,
+            claimedRange: 602,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 7.9,
+            mass: 1880,
+            cd: 0.273,
+            frontalArea: 2.63,
+            wheelRadius: 0.365,
+            crr: 0.0095,
+            gearRatio: 10.5,
+            batteryCapacity: 75.26,
+            maxRegenCRate: 1.6,
+            simpleRegenPercent: 65,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 210,
+            maxPower: 150,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#10 Thailand BEV registrations Jan–Jul 2026: 4,062. Representative trim: 602 Luxury. Published: 1,880 kg, 75.26 kWh, 150 kW, 210 Nm. Tyre radius, CdA, ratio and loss parameters are engineering estimates.",
+          },
+          tesla_model_3_rwd: {
+            name: "Tesla Model 3 RWD",
+            salesRank: 11,
+            salesUnits: 4033,
+            claimedRange: 534,
+            claimedRangeCycle: "wltp",
+            claimedZeroTo100: 6.2,
+            mass: 1772,
+            cd: 0.219,
+            frontalArea: 2.22,
+            wheelRadius: 0.334,
+            crr: 0.008,
+            gearRatio: 9,
+            batteryCapacity: 60,
+            maxRegenCRate: 2,
+            simpleRegenPercent: 70,
+            motorEff: 95,
+            drivetrainEff: 96,
+            maxTorque: 420,
+            maxPower: 208,
+            massFactor: 5,
+            efficiency: 93,
+            presetNote:
+              "#11 Thailand BEV registrations Jan–Jul 2026: 4,033. Representative trim: RWD, 18-inch wheels. Tesla publishes 1,772 kg but not pack capacity, motor output or ratio; those and the loss parameters are engineering estimates.",
+          },
+          jaecoo_6_ev: {
+            name: "JAECOO 6 EV 2WD Long Range",
+            salesRank: 12,
+            salesUnits: 3198,
+            claimedRange: 426,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 10.5,
+            mass: 1892,
+            cd: 0.37,
+            frontalArea: 2.85,
+            wheelRadius: 0.352,
+            crr: 0.0105,
+            gearRatio: 10.8,
+            batteryCapacity: 65.69,
+            maxRegenCRate: 1.4,
+            simpleRegenPercent: 55,
+            motorEff: 93,
+            drivetrainEff: 95,
+            maxTorque: 220,
+            maxPower: 135,
+            massFactor: 6,
+            efficiency: 91,
+            presetNote:
+              "#12 Thailand BEV registrations Jan–Jul 2026: 3,198. Representative trim: 2WD Long Range. Published: 65.69 kWh, 135 kW, 220 Nm. Mass, tyre radius, CdA, ratio and loss parameters are engineering estimates.",
+          },
+          tesla_model_y_rwd: {
+            name: "Tesla Model Y RWD",
+            salesRank: 13,
+            salesUnits: 2907,
+            claimedRange: 488,
+            claimedRangeCycle: "wltp",
+            claimedZeroTo100: 5.9,
+            mass: 1921,
+            cd: 0.22,
+            frontalArea: 2.56,
+            wheelRadius: 0.371,
+            crr: 0.0085,
+            gearRatio: 9,
+            batteryCapacity: 60,
+            maxRegenCRate: 2,
+            simpleRegenPercent: 70,
+            motorEff: 95,
+            drivetrainEff: 96,
+            maxTorque: 450,
+            maxPower: 220,
+            massFactor: 5,
+            efficiency: 93,
+            presetNote:
+              "#13 Thailand BEV registrations Jan–Jul 2026: 2,907. Representative trim: RWD, 19-inch wheels. Tesla publishes 1,921 kg but not pack capacity, motor output or ratio; those and the loss parameters are engineering estimates.",
+          },
+          byd_sealion_7: {
+            name: "BYD SEALION 7 Premium",
+            salesRank: 14,
+            salesUnits: 2507,
+            claimedRange: 567,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: 6.7,
+            mass: 2225,
+            cd: 0.219,
+            frontalArea: 2.62,
+            wheelRadius: 0.359,
+            crr: 0.0095,
+            gearRatio: 10.46,
+            batteryCapacity: 82.5,
+            maxRegenCRate: 1.8,
+            simpleRegenPercent: 65,
+            motorEff: 94,
+            drivetrainEff: 96,
+            maxTorque: 380,
+            maxPower: 230,
+            massFactor: 5,
+            efficiency: 92,
+            presetNote:
+              "#14 Thailand BEV registrations Jan–Jul 2026: 2,507. Representative trim: Premium RWD. Published: 2,225 kg, 82.5 kWh, 230 kW, 380 Nm. Tyre radius, CdA, ratio and loss parameters are engineering estimates.",
+          },
+          changan_lumin: {
+            name: "CHANGAN LUMIN L DC",
+            salesRank: 15,
+            salesUnits: 2417,
+            claimedRange: 301,
+            claimedRangeCycle: "nedc",
+            claimedZeroTo100: null,
+            mass: 925,
+            cd: 0.32,
+            frontalArea: 2.24,
+            wheelRadius: 0.293,
+            crr: 0.0105,
+            gearRatio: 10,
+            batteryCapacity: 28.08,
+            maxRegenCRate: 1.1,
+            simpleRegenPercent: 60,
+            motorEff: 92,
+            drivetrainEff: 95,
+            maxTorque: 83,
+            maxPower: 35,
+            massFactor: 4,
             efficiency: 90,
+            presetNote:
+              "#15 Thailand BEV registrations Jan–Jul 2026: 2,417. Representative trim: L DC. Published: 925 kg, 28.08 kWh, 35 kW, 83 Nm, 165/70 R14. CdA, ratio and loss parameters are engineering estimates.",
           },
           bmw_i4_edrive40: {
-            name: "BMW i4 (eDrive40)",
+            name: "BMW i4 eDrive40 (calibrated reference)",
+            claimedRange: 590,
+            claimedRangeCycle: "wltp",
+            claimedZeroTo100: 5.7,
             mass: 2125,
             cd: 0.24,
             frontalArea: 2.31,
             wheelRadius: 0.339,
-            crr: 0.009,
+            crr: 0.008,
             gearRatio: 8.77,
-            batteryCapacity: 81.5,
+            batteryCapacity: 81,
             maxRegenCRate: 1.42,
-            motorEff: 92,
-            drivetrainEff: 95,
+            simpleRegenPercent: 70,
+            motorEff: 95,
+            drivetrainEff: 96,
             maxTorque: 430,
             maxPower: 250,
             massFactor: 5,
             efficiency: 93,
+            presetNote:
+              "Engineering reference, not a Thailand top-15 sales model. Effective range parameters are calibrated toward BMW's best-case WLTP claim; they are not a component-by-component efficiency measurement.",
           },
           porsche_taycan_rwd: {
-            name: "Porsche Taycan (RWD)",
+            name: "Porsche Taycan RWD (79.2 kWh gross)",
+            claimedRange: 431,
+            claimedRangeCycle: "wltp",
+            claimedZeroTo100: 5.4,
             mass: 2050,
             cd: 0.22,
             frontalArea: 2.33,
@@ -1497,32 +2103,21 @@
             gearRatio: 8.1,
             batteryCapacity: 71,
             maxRegenCRate: 3.73,
+            simpleRegenPercent: 75,
             motorEff: 92,
             drivetrainEff: 95,
             maxTorque: 345,
             maxPower: 240,
             massFactor: 5,
             efficiency: 93,
-          },
-          tesla_model_y_lr: {
-            name: "Tesla Model Y (LR)",
-            mass: 1979,
-            cd: 0.23,
-            frontalArea: 2.39,
-            wheelRadius: 0.356,
-            crr: 0.009,
-            gearRatio: 9.0,
-            batteryCapacity: 75,
-            maxRegenCRate: 1.07,
-            motorEff: 92,
-            drivetrainEff: 95,
-            maxTorque: 527,
-            maxPower: 378,
-            massFactor: 5,
-            efficiency: 93,
+            presetNote:
+              "Engineering reference, not a Thailand top-15 sales model. This preset represents the earlier 79.2 kWh-gross / approximately 71 kWh-usable RWD configuration.",
           },
           bmw_ix_xdrive50: {
-            name: "BMW iX (xDrive50)",
+            name: "BMW iX xDrive50",
+            claimedRange: 630,
+            claimedRangeCycle: "wltp",
+            claimedZeroTo100: 4.6,
             mass: 2585,
             cd: 0.25,
             frontalArea: 2.82,
@@ -1531,14 +2126,66 @@
             gearRatio: 8.97,
             batteryCapacity: 105.2,
             maxRegenCRate: 1.9,
+            simpleRegenPercent: 65,
             motorEff: 92,
             drivetrainEff: 95,
             maxTorque: 765,
             maxPower: 385,
             massFactor: 5,
             efficiency: 93,
+            presetNote:
+              "Engineering reference, not a Thailand top-15 sales model. Published mass, usable battery and combined motor output are used; CdA and loss parameters remain model assumptions.",
           },
         };
+
+        const CYCLE_LABELS = {
+          nedc: "NEDC",
+          ftp75: "FTP-75",
+          wltp: "WLTP",
+          cltc: "CLTC-P",
+        };
+
+        const METRIC_HELP = {
+          acceleration: {
+            title: "Acceleration",
+            html: `
+              <p>The plot differentiates the prescribed speed trace at the simulator's 1-second interval.</p>
+              <div class="equation-box">a<sub>k</sub> = (v<sub>k</sub> − v<sub>k−1</sub>) / Δt</div>
+              <p>The displayed unit is km/h/s. For force calculations, speed is converted to m/s and acceleration to m/s².</p>
+              <ul class="variable-list"><li><strong>v</strong>: drive-cycle speed</li><li><strong>Δt</strong>: 1 s sample interval</li></ul>`,
+          },
+          wheelForce: {
+            title: "Wheel Force",
+            html: `
+              <p>Required wheel force is the sum of inertia, rolling resistance and aerodynamic drag. The range cycle uses a flat road.</p>
+              <div class="equation-box">F<sub>w</sub> = m a + C<sub>rr</sub> m g + ½ ρ C<sub>d</sub> A<sub>f</sub> v²</div>
+              <p>For a road grade θ, add <strong>m g sin θ</strong>. Positive force means traction; negative force is braking demand available to the regeneration model.</p>
+              <ul class="variable-list"><li><strong>m</strong>: Vehicle Simulation Mass</li><li><strong>C<sub>rr</sub></strong>: rolling-resistance coefficient</li><li><strong>C<sub>d</sub>, A<sub>f</sub></strong>: drag coefficient and frontal area</li><li><strong>ρ</strong>: 1.225 kg/m³; <strong>g</strong>: 9.81 m/s²</li></ul>`,
+          },
+          motorTorque: {
+            title: "Motor Torque",
+            html: `
+              <p>Wheel force is converted through tyre radius and the fixed reduction ratio.</p>
+              <div class="equation-box">T<sub>m</sub> = F<sub>w</sub> r<sub>w</sub> / (G η<sub>d</sub>)</div>
+              <p>During braking, the requested wheel force is first multiplied by the selected regenerative fraction, so only the recovered part appears as negative motor torque.</p>
+              <ul class="variable-list"><li><strong>r<sub>w</sub></strong>: Wheel Radius</li><li><strong>G</strong>: Gear Ratio</li><li><strong>η<sub>d</sub></strong>: Drivetrain Efficiency</li></ul>`,
+          },
+          batteryPower: {
+            title: "Battery Power",
+            html: `
+              <p>Positive battery power discharges the pack; negative power charges it through regenerative braking.</p>
+              <div class="equation-box">Traction: P<sub>batt</sub> = F<sub>w</sub> v / (η<sub>d</sub> η<sub>m</sub>)<br>Regen: P<sub>batt</sub> = −min(|F<sub>w</sub>v| r<sub>regen</sub> η<sub>d</sub> η<sub>m</sub>, C<sub>regen</sub>E<sub>batt</sub>)</div>
+              <ul class="variable-list"><li><strong>η<sub>m</sub></strong>: Motor &amp; Inverter Efficiency</li><li><strong>r<sub>regen</sub></strong>: fixed or rule-based recovery fraction</li><li><strong>C<sub>regen</sub>E<sub>batt</sub></strong>: maximum regenerative power in kW</li></ul>`,
+          },
+          cumulativeEnergy: {
+            title: "Cumulative Energy",
+            html: `
+              <p>Battery power is integrated over time. Regeneration subtracts from net energy.</p>
+              <div class="equation-box">E<sub>k</sub> = E<sub>k−1</sub> + P<sub>batt,k</sub> Δt / 3600<br>Consumption = 100 E / D<br>Estimated range = 100 E<sub>batt</sub> / Consumption</div>
+              <p>Power is in kW, time in seconds, energy in kWh and distance in km. The range estimate assumes the entered battery capacity is usable.</p>`,
+          },
+        };
+
         let state = {
           regenConfig: {
             strategy: "simple",
@@ -1559,6 +2206,7 @@
           form: document.getElementById("ev-form"),
           modelSelect: document.getElementById("model-select"),
           modelTitle: document.getElementById("model-title"),
+          presetNote: document.getElementById("preset-note"),
           plotCanvasSpeed: document.getElementById("plot-canvas-speed"),
           plotCanvasSecondary: document.getElementById("plot-canvas-secondary"),
           plotSelector: document.getElementById("plot-selector"),
@@ -1595,6 +2243,10 @@
             consumption: document.getElementById("summary-consumption"),
             range: document.getElementById("summary-range"),
             rangeLabel: document.getElementById("summary-range-label"),
+            claimedRange: document.getElementById("summary-claimed-range"),
+            claimedRangeLabel: document.getElementById("summary-claimed-range-label"),
+            rangeDifference: document.getElementById("summary-range-difference"),
+            claimedAccel: document.getElementById("summary-claimed-accel"),
           },
           regen: {
             strategySelect: document.getElementById("regen-strategy"),
@@ -1622,6 +2274,18 @@
             triggerBtn: document.getElementById("help-btn"),
             closeBtn: document.getElementById("close-help-btn"),
           },
+          cycleHelp: {
+            modal: document.getElementById("cycle-help-modal"),
+            triggerBtn: document.getElementById("cycle-help-btn"),
+            closeBtn: document.getElementById("close-cycle-help-btn"),
+          },
+          metricHelp: {
+            modal: document.getElementById("metric-help-modal"),
+            triggerBtn: document.getElementById("metric-help-btn"),
+            closeBtn: document.getElementById("close-metric-help-btn"),
+            title: document.getElementById("metric-help-title"),
+            body: document.getElementById("metric-help-body"),
+          },
           perf: {
             panel: document.getElementById("performance-panel"), // **MODIFICATION**
             targetSpeed: document.getElementById("perf-target-speed"),
@@ -1632,6 +2296,7 @@
             accelResultVal: document.getElementById("accel-result-val"),
             accelResultTitle: document.getElementById("accel-result-title"),
             accelResultSlope: document.getElementById("accel-result-slope"),
+            accelClaimComparison: document.getElementById("accel-claim-comparison"),
             maxSpeedTableBody: document.getElementById("max-speed-table-body"),
             motorPlot: document.getElementById("motorPlotContainer"),
             vehiclePlot: document.getElementById("vehiclePlotContainer"),
@@ -1642,6 +2307,7 @@
         const getDriveCycleVelocities = (cycleName) => {
           if (cycleName === "wltp") return RAW_WLTP_VELOCITIES;
           if (cycleName === "ftp75") return RAW_FTP75_VELOCITIES;
+          if (cycleName === "cltc") return RAW_CLTC_VELOCITIES;
 
           // Default to NEDC
           const v = [];
@@ -2233,6 +2899,27 @@
             DOM.perf.accelResultVal.textContent = `${time.toFixed(2)} s`;
             DOM.perf.accelResultSlope.innerHTML = `on a <strong>${grade}°</strong> slope.`;
           }
+
+          const preset = getSelectedPreset();
+          const isStandardComparison = start === 0 && end === 100 && grade === 0;
+          if (!preset) {
+            DOM.perf.accelClaimComparison.textContent =
+              "Select a vehicle preset to compare with its claimed 0–100 time.";
+          } else if (!Number.isFinite(preset.claimedZeroTo100)) {
+            DOM.perf.accelClaimComparison.textContent =
+              `${preset.name}: manufacturer 0–100 claim not published.`;
+          } else if (!isStandardComparison) {
+            DOM.perf.accelClaimComparison.textContent =
+              `Claimed 0–100 on level road: ${preset.claimedZeroTo100.toFixed(2).replace(/0$/, "")} s. Set 0, 100 and 0° for a direct comparison.`;
+          } else if (time === Infinity) {
+            DOM.perf.accelClaimComparison.textContent =
+              `Claimed 0–100: ${preset.claimedZeroTo100.toFixed(2).replace(/0$/, "")} s; simulator cannot reach the target with current parameters.`;
+          } else {
+            const delta = time - preset.claimedZeroTo100;
+            const sign = delta >= 0 ? "+" : "";
+            DOM.perf.accelClaimComparison.textContent =
+              `Claimed: ${preset.claimedZeroTo100.toFixed(2).replace(/0$/, "")} s · simulator ${sign}${delta.toFixed(2)} s vs claim`;
+          }
         }
 
         function updateRunButtonState(isDirty) {
@@ -2290,6 +2977,50 @@
           updateRunButtonState(false);
         };
 
+        const getSelectedPreset = () =>
+          VEHICLE_PRESETS[DOM.modelSelect.value] || null;
+
+        function updateClaimedRangeSummary(estimatedRangeKm) {
+          const preset = getSelectedPreset();
+          DOM.summary.rangeDifference.classList.remove(
+            "comparison-good",
+            "comparison-warn"
+          );
+          if (!preset) {
+            DOM.summary.claimedRangeLabel.textContent = "Claimed Range";
+            DOM.summary.claimedRange.textContent = "—";
+            DOM.summary.claimedAccel.textContent = "—";
+            DOM.summary.rangeDifference.textContent = "Select a vehicle preset";
+            return;
+          }
+
+          const claimCycle = CYCLE_LABELS[preset.claimedRangeCycle] ||
+            preset.claimedRangeCycle.toUpperCase();
+          DOM.summary.claimedRangeLabel.textContent = `Claimed Range (${claimCycle})`;
+          DOM.summary.claimedRange.textContent = `${preset.claimedRange.toFixed(0)} km`;
+          DOM.summary.claimedAccel.textContent = Number.isFinite(
+            preset.claimedZeroTo100
+          )
+            ? `${preset.claimedZeroTo100.toFixed(2).replace(/0$/, "")} s`
+            : "Not published";
+
+          if (state.currentDriveCycle !== preset.claimedRangeCycle) {
+            const selectedCycle = CYCLE_LABELS[state.currentDriveCycle];
+            DOM.summary.rangeDifference.textContent =
+              `Select ${claimCycle} to compare; current cycle is ${selectedCycle}.`;
+            return;
+          }
+
+          const deltaKm = estimatedRangeKm - preset.claimedRange;
+          const deltaPct = (deltaKm / preset.claimedRange) * 100;
+          const sign = deltaKm >= 0 ? "+" : "";
+          DOM.summary.rangeDifference.textContent =
+            `Simulator ${sign}${deltaKm.toFixed(0)} km (${sign}${deltaPct.toFixed(1)}%) vs claim`;
+          DOM.summary.rangeDifference.classList.add(
+            Math.abs(deltaPct) <= 10 ? "comparison-good" : "comparison-warn"
+          );
+        }
+
         function renderRangePlots() {
           if (!state.lastResults) return; // Don't render if there's no data
 
@@ -2307,10 +3038,12 @@
           DOM.summary.energyPercent.textContent = `${summary.energyUsedPercent.toFixed(
             1
           )} %`;
-          DOM.summary.rangeLabel.textContent = `Est. Range (${state.currentDriveCycle.toUpperCase()})`;
+          const cycleLabel = CYCLE_LABELS[state.currentDriveCycle];
+          DOM.summary.rangeLabel.textContent = `Est. Range (${cycleLabel})`;
           DOM.summary.range.textContent = `${summary.estimatedRangeKm.toFixed(
             0
           )} km`;
+          updateClaimedRangeSummary(summary.estimatedRangeKm);
           plotData(
             DOM.plotCanvasSpeed,
             results.time,
@@ -2524,6 +3257,13 @@
             if (DOM.modelSelect.value !== "custom") {
               DOM.modelSelect.value = "custom";
               DOM.modelTitle.textContent = "Custom Model";
+              DOM.presetNote.textContent =
+                "Preset modified — the current values are now a custom model.";
+              if (state.lastResults) {
+                updateClaimedRangeSummary(
+                  state.lastResults.summary.estimatedRangeKm
+                );
+              }
             }
             updateRunButtonState(true);
           }
@@ -2538,6 +3278,13 @@
           const modelKey = e.target.value;
           if (modelKey === "custom") {
             DOM.modelTitle.textContent = "Custom Model";
+            DOM.presetNote.textContent =
+              "Enter a custom vehicle or choose a documented preset.";
+            if (state.lastResults) {
+              updateClaimedRangeSummary(
+                state.lastResults.summary.estimatedRangeKm
+              );
+            }
             updateRunButtonState(true);
             return;
           }
@@ -2545,6 +3292,7 @@
           if (!preset) return;
 
           DOM.modelTitle.textContent = preset.name;
+          DOM.presetNote.textContent = preset.presetNote;
           Object.keys(preset).forEach((key) => {
             const id = key.replace(/([A-Z])/g, "-$1").toLowerCase();
             const inputEl = document.getElementById(id);
@@ -2552,6 +3300,10 @@
               inputEl.value = preset[key];
             }
           });
+
+          // Keep the fixed-regeneration assumption consistent with the preset.
+          state.regenConfig.simplePercent = preset.simpleRegenPercent ?? 60;
+          DOM.regen.simplePercent.value = state.regenConfig.simplePercent;
 
           document
             .querySelectorAll('input[type="range"]')
@@ -2566,7 +3318,10 @@
           }
         });
 
-        DOM.plotSelector.addEventListener("change", () => renderRangePlots());
+        DOM.plotSelector.addEventListener("change", () => {
+          renderRangePlots();
+          updateMetricHelp();
+        });
         [DOM.plotCanvasSpeed, DOM.plotCanvasSecondary].forEach((canvas) => {
           canvas.addEventListener("mousemove", (e) => {
             if (!state.lastResults) return;
@@ -2618,6 +3373,13 @@
           }
         });
 
+        const updateMetricHelp = () => {
+          const content = METRIC_HELP[DOM.plotSelector.value];
+          if (!content) return;
+          DOM.metricHelp.title.textContent = `${content.title}: calculation`;
+          DOM.metricHelp.body.innerHTML = content.html;
+        };
+
         const setupModal = (modalEl, triggerBtn, closeBtn) => {
           const open = () => (modalEl.style.display = "flex");
           const close = () => (modalEl.style.display = "none");
@@ -2634,6 +3396,18 @@
           DOM.regen.closeBtn
         );
         setupModal(DOM.help.modal, DOM.help.triggerBtn, DOM.help.closeBtn);
+        setupModal(
+          DOM.cycleHelp.modal,
+          DOM.cycleHelp.triggerBtn,
+          DOM.cycleHelp.closeBtn
+        );
+        DOM.metricHelp.triggerBtn.addEventListener("click", updateMetricHelp);
+        setupModal(
+          DOM.metricHelp.modal,
+          DOM.metricHelp.triggerBtn,
+          DOM.metricHelp.closeBtn
+        );
+        updateMetricHelp();
         DOM.regen.cancelBtn.addEventListener("click", closeRulesModal);
         DOM.regen.strategySelect.addEventListener("change", () => {
           DOM.regen.configureContainer.style.display =
