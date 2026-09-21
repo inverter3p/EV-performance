@@ -1,0 +1,2674 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#111c25" />
+    <title>Soft-Radial GVM Simulation Lab</title>
+    <meta
+      name="description"
+      content="Interactive browser simulation of soft-radial PS-GVM direct speed control for PMSM motors M1-M19."
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308131d'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%2326c6b3' stroke-width='5'/%3E%3Cpath d='M18 36c8-18 14 12 28-8' fill='none' stroke='%23f5b94c' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        --app: #20272e;
+        --app-2: #252e36;
+        --bg: #e1e5e8;
+        --paper: #fff;
+        --ink: #17212a;
+        --muted: #56636d;
+        --line: #bac3c9;
+        --line-dark: #8e9aa3;
+        --soft: #eef1f3;
+        --accent: #00629b;
+        --accent-dark: #004b78;
+        --cyan: #008f95;
+        --navy: #233746;
+        --amber: #d97800;
+        --blue: #00629b;
+        --pink: #a52052;
+        --ok: #23724c;
+        --shadow: none;
+        --radius: 0;
+        --display: "Cambria", "Charter", "Times New Roman", serif;
+        --ui: Arial, "Helvetica Neue", Helvetica, sans-serif;
+        --mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--ui);
+        font-size: 16px;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(
+          90deg,
+          #d9dee2 0,
+          #e7eaed 18%,
+          #e7eaed 82%,
+          #d9dee2 100%
+        );
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      .topbar {
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 30px;
+        background: var(--app);
+        border-bottom: 4px solid var(--accent);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+      }
+      .mark {
+        width: 38px;
+        height: 38px;
+        border: 1px solid #74838d;
+        background: #151b20;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font: 800 15px var(--mono);
+        letter-spacing: -0.08em;
+      }
+      .brand h1 {
+        font: 600 19px var(--display);
+        margin: 0;
+        color: #fff;
+        letter-spacing: 0.01em;
+      }
+      .brand p {
+        font-size: 12px;
+        margin: 2px 0 0;
+        color: #aeb8bf;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .model-badge {
+        font: 600 13px var(--mono);
+        color: #d2d9dd;
+        border-left: 1px solid #5b6871;
+        padding: 4px 0 4px 18px;
+      }
+      .shell {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 22px 24px 60px;
+        background: #edf0f2;
+        min-height: calc(100vh - 64px);
+        border-left: 1px solid #c6cdd2;
+        border-right: 1px solid #c6cdd2;
+      }
+      .intro {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 17px;
+      }
+      .intro h2 {
+        font: 600 27px/1.15 var(--display);
+        margin: 0 0 4px;
+        letter-spacing: -0.01em;
+        color: #1e2d38;
+      }
+      .intro p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .status {
+        font-size: 14px;
+        color: var(--muted);
+        white-space: nowrap;
+        border: 1px solid var(--line-dark);
+        background: #fff;
+        padding: 9px 12px;
+      }
+      .status:before {
+        content: "";
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: var(--ok);
+        margin-right: 8px;
+      }
+      .status b {
+        color: var(--ink);
+        font-weight: 700;
+      }
+      .stepper {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(190px, 1fr));
+        border: 1px solid #7f8b94;
+        background: #cbd2d7;
+        margin-bottom: 14px;
+        overflow-x: auto;
+      }
+      .step-tab {
+        position: relative;
+        min-height: 68px;
+        border: 0;
+        border-right: 1px solid #8f9aa2;
+        background: #d9dee2;
+        color: #4b5a65;
+        text-align: left;
+        padding: 11px 15px 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3px;
+      }
+      .step-tab:last-child {
+        border-right: 0;
+      }
+      .step-tab:hover:not(:disabled) {
+        background: #f5f6f7;
+        color: var(--ink);
+      }
+      .step-tab .tab-code {
+        font: 700 12px var(--mono);
+        letter-spacing: 0.08em;
+        color: #66747e;
+      }
+      .step-tab .tab-title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .step-tab.active {
+        background: #fff;
+        color: #132d40;
+        box-shadow: inset 0 -5px 0 var(--accent);
+      }
+      .step-tab.active .tab-code {
+        color: var(--accent);
+      }
+      .step-tab.done:not(.active) {
+        background: #e8ecef;
+        color: #273945;
+      }
+      .step-tab.done:not(.active):after {
+        content: "COMPLETE";
+        position: absolute;
+        right: 11px;
+        top: 10px;
+        font: 700 10px var(--mono);
+        color: var(--ok);
+      }
+      .step-tab:disabled {
+        cursor: not-allowed;
+        color: #89949b;
+        background: #d1d7db;
+      }
+      .step-tab:disabled .tab-code {
+        color: #929ca3;
+      }
+      .flow {
+        display: block;
+      }
+      .step-card {
+        display: none;
+        background: var(--paper);
+        border: 1px solid var(--line-dark);
+        box-shadow: var(--shadow);
+      }
+      .step-card.open {
+        display: block;
+      }
+      .step-summary {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        min-height: 76px;
+        padding: 15px 19px;
+        background: #f4f5f6;
+        border-bottom: 1px solid var(--line-dark);
+      }
+      .section-code {
+        font: 700 12px var(--mono);
+        letter-spacing: 0.07em;
+        color: #fff;
+        background: #2d3b45;
+        padding: 8px 10px;
+        border-left: 4px solid var(--accent);
+      }
+      .summary-copy {
+        flex: 1;
+        min-width: 0;
+      }
+      .summary-copy h3 {
+        font: 600 19px var(--display);
+        margin: 0 0 3px;
+        color: #1c2d39;
+      }
+      .summary-copy p {
+        font-size: 14px;
+        color: var(--muted);
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .help-btn {
+        border: 1px solid var(--line-dark);
+        background: #fff;
+        color: var(--accent-dark);
+        font-size: 14px;
+        font-weight: 700;
+        padding: 8px 11px;
+      }
+      .help-btn:before {
+        content: "i";
+        display: inline-grid;
+        place-items: center;
+        width: 18px;
+        height: 18px;
+        margin-right: 7px;
+        border: 1px solid currentColor;
+        font: 700 12px var(--display);
+      }
+      .help-btn:hover {
+        background: #e8f1f6;
+      }
+      .edit-btn {
+        display: none;
+      }
+      .step-body {
+        padding: 20px;
+      }
+      .step-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 9px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #d9dfe3;
+      }
+      .btn {
+        min-height: 39px;
+        border: 1px solid var(--line-dark);
+        background: #fff;
+        color: #253a49;
+        padding: 9px 16px;
+        border-radius: 0;
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .btn:hover {
+        background: var(--soft);
+        border-color: #6d7b85;
+      }
+      .btn.primary,
+      .btn.teal {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+        border-bottom: 3px solid #003d62;
+      }
+      .btn.primary:hover,
+      .btn.teal:hover {
+        background: var(--accent-dark);
+        border-color: var(--accent-dark);
+      }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        color: #3e4d58;
+        margin: 0 0 7px;
+      }
+      .field {
+        min-width: 0;
+      }
+      select,
+      input[type="number"] {
+        width: 100%;
+        height: 41px;
+        border: 1px solid var(--line-dark);
+        background: #fff;
+        color: var(--ink);
+        border-radius: 0;
+        padding: 8px 10px;
+        outline: none;
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+      }
+      select:focus,
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: inset 0 -3px 0 var(--accent);
+      }
+      .select-row {
+        display: grid;
+        grid-template-columns: minmax(300px, 1.25fr) 1fr;
+        gap: 15px;
+        align-items: end;
+      }
+      .source-note {
+        min-height: 41px;
+        font-size: 14px;
+        color: #485965;
+        line-height: 1.4;
+        padding: 10px 12px;
+        background: #e9eef1;
+        border-left: 4px solid #758894;
+      }
+      .param-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px 13px;
+        margin-top: 19px;
+      }
+      .unit-field {
+        position: relative;
+      }
+      .unit-field input {
+        padding-right: 70px;
+        font-family: var(--mono);
+        font-size: 14px;
+      }
+      .unit-field span {
+        position: absolute;
+        right: 10px;
+        bottom: 12px;
+        color: #5f6f7a;
+        font: 12px var(--mono);
+        pointer-events: none;
+      }
+      .gain-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 17px;
+        font-size: 15px;
+        border: 1px solid var(--line-dark);
+      }
+      .gain-table th {
+        color: #344550;
+        background: #dfe5e8;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        text-align: left;
+        padding: 10px 11px;
+        border-bottom: 2px solid #89969f;
+      }
+      .gain-table td {
+        padding: 10px 11px;
+        border-top: 1px solid var(--line);
+      }
+      .gain-table td:first-child {
+        font: 700 14px var(--mono);
+        color: var(--navy);
+        background: #f1f3f4;
+        width: 160px;
+      }
+      .gain-table input {
+        min-width: 96px;
+        font-family: var(--mono);
+        font-size: 14px;
+      }
+      .gain-table .scale {
+        background: #edf7f8;
+        border-color: #5f999e;
+        border-left: 4px solid var(--cyan);
+      }
+      .formula-strip {
+        display: flex;
+        gap: 0;
+        flex-wrap: wrap;
+        border: 1px solid var(--line-dark);
+        background: #f3f5f6;
+      }
+      .formula-strip code {
+        font: 13px var(--mono);
+        padding: 10px 13px;
+        color: #334b5a;
+        border-right: 1px solid var(--line);
+      }
+      .gain-hint {
+        font-size: 14px;
+        color: var(--muted);
+        margin: 13px 0 0;
+      }
+      .reset-link {
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .input-grid {
+        display: grid;
+        grid-template-columns: 1.1fr repeat(4, 1fr);
+        gap: 13px;
+        align-items: end;
+      }
+      .seg {
+        height: 41px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border: 1px solid var(--line-dark);
+        overflow: hidden;
+      }
+      .seg button {
+        border: 0;
+        border-right: 1px solid var(--line-dark);
+        background: #fff;
+        color: var(--muted);
+        padding: 8px;
+        font-size: 14px;
+      }
+      .seg button:last-child {
+        border-right: 0;
+      }
+      .seg button.active {
+        background: var(--navy);
+        color: #fff;
+        font-weight: 700;
+        box-shadow: inset 0 -3px 0 var(--accent);
+      }
+      .load-question {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 17px;
+        background: #eef1f3;
+        border: 1px solid var(--line-dark);
+        border-left: 5px solid var(--amber);
+      }
+      .load-question strong {
+        font-size: 15px;
+      }
+      .load-question span {
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .results {
+        margin-top: 20px;
+        display: none;
+      }
+      .results.visible {
+        display: block;
+      }
+      .runbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: var(--app-2);
+        border: 1px solid #11181d;
+        padding: 11px 13px;
+        margin-bottom: 9px;
+        color: #fff;
+      }
+      .timebase {
+        font: 700 11px var(--mono);
+        letter-spacing: 0.07em;
+        color: #9eabb4;
+        border-right: 1px solid #52616b;
+        padding-right: 13px;
+        white-space: nowrap;
+      }
+      .runbar strong {
+        font: 700 14px var(--mono);
+        color: #fff;
+        min-width: 106px;
+      }
+      .progress {
+        height: 7px;
+        background: #3b4851;
+        flex: 1;
+        position: relative;
+      }
+      .progress i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--amber);
+        pointer-events: none;
+      }
+      .progress input {
+        position: absolute;
+        left: 0;
+        top: -8px;
+        width: 100%;
+        height: 23px;
+        margin: 0;
+        appearance: none;
+        -webkit-appearance: none;
+        background: transparent;
+        cursor: ew-resize;
+      }
+      .progress input::-webkit-slider-runnable-track {
+        height: 7px;
+        background: transparent;
+      }
+      .progress input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 15px;
+        height: 19px;
+        margin-top: -6px;
+        border: 2px solid var(--amber);
+        border-radius: 1px;
+        background: #fff;
+        box-shadow: 0 0 0 1px #151b20;
+      }
+      .progress input::-moz-range-track {
+        height: 7px;
+        background: transparent;
+        border: 0;
+      }
+      .progress input::-moz-range-thumb {
+        width: 13px;
+        height: 17px;
+        border: 2px solid var(--amber);
+        border-radius: 1px;
+        background: #fff;
+        box-shadow: 0 0 0 1px #151b20;
+      }
+      .progress input:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 5px;
+      }
+      .progress input.scrubbing::-webkit-slider-thumb {
+        background: var(--amber);
+      }
+      .progress input.scrubbing::-moz-range-thumb {
+        background: var(--amber);
+      }
+      .runbar .btn {
+        min-height: 32px;
+        padding: 6px 12px;
+        background: #33434e;
+        border-color: #6b7a84;
+        color: #fff;
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        border: 1px solid #85919a;
+        overflow: hidden;
+        margin-bottom: 9px;
+      }
+      .metric {
+        position: relative;
+        background: #fff;
+        padding: 15px 14px 13px;
+        border-right: 1px solid var(--line);
+        border-top: 5px solid var(--accent);
+      }
+      .metric:nth-child(4) {
+        border-top-color: var(--amber);
+      }
+      .metric:nth-child(5) {
+        border-top-color: var(--cyan);
+      }
+      .metric:nth-child(6) {
+        border-top-color: #3a4650;
+      }
+      .metric:last-child {
+        border-right: 0;
+      }
+      .metric span {
+        display: block;
+        color: #4e5d67;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.065em;
+      }
+      .metric strong {
+        font: 700 23px var(--mono);
+        display: inline-block;
+        margin-top: 7px;
+        color: #142d3e;
+      }
+      .metric small {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        margin-left: 4px;
+      }
+      .visual-grid {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 9px;
+        align-items: start;
+      }
+      .motor-card,
+      .plot-card {
+        background: var(--paper);
+        border: 1px solid #85919a;
+        padding: 0;
+        box-shadow: var(--shadow);
+      }
+      .motor-card {
+        grid-row: span 2;
+      }
+      .motor-wrap {
+        height: 570px;
+        position: relative;
+        background: #fbfcfc;
+      }
+      .motor-wrap canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .plots {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        min-width: 0;
+      }
+      .plot-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 14px;
+        background: #e6eaed;
+        border-bottom: 1px solid #9ba6ad;
+      }
+      .plot-head h3 {
+        font: 600 18px var(--display);
+        margin: 0;
+        color: #1b2d39;
+      }
+      .legend {
+        display: flex;
+        gap: 17px;
+        color: #3f4f5a;
+        font-size: 13px;
+        font-weight: 600;
+        flex-wrap: wrap;
+      }
+      .key {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .swatch {
+        width: 20px;
+        height: 3px;
+        background: currentColor;
+      }
+      .plot-wrap {
+        height: 310px;
+        position: relative;
+        background: #fbfcfc;
+        overflow: hidden;
+      }
+      .plot-wrap canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .tip {
+        position: absolute;
+        pointer-events: none;
+        background: rgba(24, 32, 38, 0.97);
+        border: 1px solid #7f8e98;
+        padding: 8px 10px;
+        font: 12px var(--mono);
+        color: #fff;
+        display: none;
+        z-index: 2;
+        white-space: nowrap;
+      }
+      .footer-note {
+        color: #52616b;
+        font: 12px var(--mono);
+        margin-top: 10px;
+        text-align: right;
+      }
+      dialog {
+        width: min(720px, calc(100vw - 28px));
+        max-height: 86vh;
+        color: var(--ink);
+        background: #fff;
+        border: 1px solid #81909a;
+        border-radius: 4px;
+        padding: 0;
+        box-shadow: 0 24px 70px rgba(10, 23, 32, 0.28);
+      }
+      dialog::backdrop {
+        background: rgba(10, 22, 31, 0.48);
+      }
+      .modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 17px;
+        border-bottom: 3px solid var(--accent);
+        position: sticky;
+        top: 0;
+        background: var(--app);
+        z-index: 2;
+      }
+      .modal-head h2 {
+        margin: 0;
+        font-size: 16px;
+        color: #fff;
+        font-weight: 650;
+      }
+      .close {
+        width: 30px;
+        height: 30px;
+        border: 1px solid #607482;
+        background: #263946;
+        color: #fff;
+      }
+      .modal-body {
+        padding: 20px;
+        line-height: 1.6;
+        color: #4c5d68;
+        font-size: 14px;
+      }
+      .modal-body h3 {
+        color: var(--ink);
+        font-size: 15px;
+        margin: 20px 0 8px;
+      }
+      .modal-body h3:first-child {
+        margin-top: 0;
+      }
+      .eq {
+        font-family: "Cambria Math", Georgia, serif;
+        color: var(--navy);
+        background: #f2f5f7;
+        border: 1px solid var(--line);
+        padding: 10px 12px;
+        margin: 8px 0;
+        overflow: auto;
+      }
+      .callout {
+        border-left: 4px solid var(--cyan);
+        background: #eef7f8;
+        padding: 10px 12px;
+      }
+      @media (max-width: 900px) {
+        .shell {
+          padding-inline: 14px;
+        }
+        .stepper {
+          grid-template-columns: repeat(4, minmax(165px, 1fr));
+        }
+        .param-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .input-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .metrics {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .metric:nth-child(3) {
+          border-right: 0;
+        }
+        .select-row {
+          grid-template-columns: 1fr;
+        }
+        .visual-grid {
+          grid-template-columns: 1fr;
+        }
+        .motor-card {
+          grid-row: auto;
+        }
+        .motor-wrap {
+          height: 330px;
+        }
+        .plot-wrap {
+          height: 280px;
+        }
+      }
+      @media (max-width: 560px) {
+        .topbar {
+          padding: 0 12px;
+        }
+        .model-badge,
+        .brand p {
+          display: none;
+        }
+        .shell {
+          padding: 15px 8px 40px;
+        }
+        .intro {
+          display: block;
+        }
+        .status {
+          margin-top: 10px;
+        }
+        .stepper {
+          display: flex;
+          overflow-x: auto;
+        }
+        .step-tab {
+          min-width: 175px;
+        }
+        .param-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        .gain-table {
+          display: block;
+          overflow-x: auto;
+        }
+        .input-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        .load-question {
+          display: block;
+        }
+        .load-question > div:last-child {
+          min-width: 0 !important;
+          margin-top: 13px;
+        }
+        .metrics {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .metric:nth-child(3) {
+          border-right: 1px solid var(--line);
+        }
+        .metric:nth-child(even) {
+          border-right: 0;
+        }
+        .motor-wrap {
+          height: 260px;
+        }
+        .plot-wrap {
+          height: 245px;
+        }
+        .step-summary {
+          padding: 12px;
+        }
+        .section-code {
+          display: none;
+        }
+        .step-body {
+          padding: 14px;
+        }
+        .timebase {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">GV</div>
+        <div>
+          <h1>Soft-Radial GVM Commissioning Studio</h1>
+          <p>PMSM direct-speed control workspace</p>
+        </div>
+      </div>
+      <span class="model-badge"
+        >MOTOR LIBRARY M1–M19&nbsp;&nbsp;|&nbsp;&nbsp;Ts 100 µs</span
+      >
+    </header>
+    <main class="shell">
+      <section class="intro">
+        <div>
+          <h2>PMSM commissioning workspace</h2>
+          <p>
+            Configure plant data, generate gain endpoints, and validate
+            transient performance.
+          </p>
+        </div>
+        <div class="status">
+          System status&nbsp; <b id="statusText">Verify motor parameters</b>
+        </div>
+      </section>
+      <nav class="stepper" aria-label="Commissioning modules" role="tablist">
+        <button
+          class="step-tab active"
+          data-tab="1"
+          role="tab"
+          aria-selected="true"
+        >
+          <span class="tab-code">MODULE 01</span
+          ><span class="tab-title">Motor configuration</span></button
+        ><button
+          class="step-tab"
+          data-tab="2"
+          role="tab"
+          aria-selected="false"
+          disabled
+        >
+          <span class="tab-code">MODULE 02</span
+          ><span class="tab-title">Gain commissioning</span></button
+        ><button
+          class="step-tab"
+          data-tab="3"
+          role="tab"
+          aria-selected="false"
+          disabled
+        >
+          <span class="tab-code">MODULE 03</span
+          ><span class="tab-title">No-load validation</span></button
+        ><button
+          class="step-tab"
+          data-tab="4"
+          role="tab"
+          aria-selected="false"
+          disabled
+        >
+          <span class="tab-code">MODULE 04</span
+          ><span class="tab-title">Load disturbance</span>
+        </button>
+      </nav>
+      <div class="flow">
+        <section class="step-card open" data-step="1" role="tabpanel">
+          <header class="step-summary">
+            <span class="section-code">MTR DATA</span>
+            <div class="summary-copy">
+              <h3>Select motor and verify parameters</h3>
+              <p id="motorSummary">M1 · Original 1.5-kW PMSM</p>
+            </div>
+            <button class="help-btn" data-help="1">Technical help</button>
+          </header>
+          <div class="step-body">
+            <div class="select-row">
+              <div class="field">
+                <label for="motor">Motor parameter set</label
+                ><select id="motor"></select>
+              </div>
+              <div class="source-note" id="sourceNote"></div>
+            </div>
+            <div class="param-grid" id="parameterGrid"></div>
+            <div class="step-actions">
+              <button class="btn primary" id="toGains">
+                Use these parameters
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="step-card locked" data-step="2" role="tabpanel">
+          <header class="step-summary">
+            <span class="section-code">GAIN SET</span>
+            <div class="summary-copy">
+              <h3>Calculate first-shot gain vectors</h3>
+              <p id="gainSummary">Waiting for motor parameters</p>
+            </div>
+            <button class="help-btn" data-help="2">Technical help</button>
+          </header>
+          <div class="step-body">
+            <div class="formula-strip" id="derivedStrip"></div>
+            <table class="gain-table">
+              <thead>
+                <tr>
+                  <th>Endpoint</th>
+                  <th>Kp</th>
+                  <th>Ki</th>
+                  <th>Kd</th>
+                  <th>Vector scale</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Gmotion</td>
+                  <td><input id="gmKp" type="number" step="any" /></td>
+                  <td><input id="gmKi" type="number" step="any" /></td>
+                  <td><input id="gmKd" type="number" step="any" /></td>
+                  <td>
+                    <input
+                      class="scale"
+                      id="gmScale"
+                      type="number"
+                      min="0"
+                      step="0.05"
+                      value="1"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td>Gss</td>
+                  <td><input id="gsKp" type="number" step="any" /></td>
+                  <td><input id="gsKi" type="number" step="any" /></td>
+                  <td><input id="gsKd" type="number" step="any" /></td>
+                  <td>
+                    <input
+                      class="scale"
+                      id="gsScale"
+                      type="number"
+                      min="0"
+                      step="0.05"
+                      value="1"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="gain-hint">
+              Edit a gain directly, or scale the complete endpoint while
+              preserving its internal ratios.
+            </p>
+            <div class="step-actions">
+              <button class="reset-link" id="resetGains">
+                Recalculate first-shot values</button
+              ><button class="btn primary" id="toInput">Accept gains</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="step-card locked" data-step="3" role="tabpanel">
+          <header class="step-summary">
+            <span class="section-code">NL TEST</span>
+            <div class="summary-copy">
+              <h3>Select input and run no-load response</h3>
+              <p id="inputSummary">Step or ramp speed reference</p>
+            </div>
+            <button class="help-btn" data-help="3">Technical help</button>
+          </header>
+          <div class="step-body">
+            <div class="input-grid">
+              <div class="field">
+                <label>Input type</label>
+                <div class="seg">
+                  <button id="stepMode">Step</button
+                  ><button id="rampMode" class="active">Ramp</button>
+                </div>
+              </div>
+              <div class="field">
+                <label for="targetRpm">Target (rpm)</label
+                ><input id="targetRpm" type="number" step="10" />
+              </div>
+              <div class="field" id="rampField">
+                <label for="rampMs">Ramp time (ms)</label
+                ><input
+                  id="rampMs"
+                  type="number"
+                  min="0.1"
+                  step="1"
+                  value="100"
+                />
+              </div>
+              <div class="field">
+                <label for="stepAtMs">Start at (ms)</label
+                ><input
+                  id="stepAtMs"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="20"
+                />
+              </div>
+              <div class="field">
+                <label for="simMs">Duration (ms)</label
+                ><input
+                  id="simMs"
+                  type="number"
+                  min="100"
+                  max="5000"
+                  step="50"
+                  value="600"
+                />
+              </div>
+            </div>
+            <div class="step-actions">
+              <button class="btn teal" id="runNoLoad">
+                Run no-load response
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="step-card locked" data-step="4" role="tabpanel">
+          <header class="step-summary">
+            <span class="section-code">LD TEST</span>
+            <div class="summary-copy">
+              <h3>Apply a load disturbance?</h3>
+              <p id="loadSummary">Default load is 80% of motor base torque</p>
+            </div>
+            <button class="help-btn" data-help="4">Technical help</button>
+          </header>
+          <div class="step-body">
+            <div class="load-question">
+              <div>
+                <strong>Run the same input with a torque step</strong
+                ><br /><span
+                  >Compare recovery without changing the commissioned
+                  gains.</span
+                >
+              </div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  gap: 9px;
+                  min-width: 300px;
+                "
+              >
+                <div class="field">
+                  <label for="loadNm">Load torque (N·m)</label
+                  ><input id="loadNm" type="number" step="0.01" />
+                </div>
+                <div class="field">
+                  <label for="loadAtMs">Apply at (ms)</label
+                  ><input
+                    id="loadAtMs"
+                    type="number"
+                    min="0"
+                    step="10"
+                    value="350"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="step-actions">
+              <button class="btn" id="keepNoLoad">Keep no-load result</button
+              ><button class="btn teal" id="runLoad">Run with load</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="results" id="results">
+        <div class="runbar">
+          <span class="timebase">SIMULATION TIME · 1×</span
+          ><strong id="clock">t = 0.0 ms</strong>
+          <div class="progress" title="Drag to inspect simulation time">
+            <i id="progressFill"></i
+            ><input
+              id="timeScrubber"
+              type="range"
+              min="0"
+              max="1000"
+              value="0"
+              step="1"
+              aria-label="Simulation time"
+            />
+          </div>
+          <button class="btn" id="replay">Replay</button>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <span>Rise 10–90%</span><strong id="mRise">—</strong
+            ><small>ms</small>
+          </div>
+          <div class="metric">
+            <span>Settling ±2%</span><strong id="mSettle">—</strong
+            ><small>ms</small>
+          </div>
+          <div class="metric">
+            <span>Overshoot</span><strong id="mOver">—</strong><small>%</small>
+          </div>
+          <div class="metric">
+            <span>Peak |iq|</span><strong id="mIq">—</strong
+            ><small id="mIqSub">A</small>
+          </div>
+          <div class="metric">
+            <span>Peak voltage</span><strong id="mVolt">—</strong
+            ><small>pu</small>
+          </div>
+          <div class="metric">
+            <span>Final error</span><strong id="mErr">—</strong><small>%</small>
+          </div>
+        </div>
+        <div class="visual-grid">
+          <article class="motor-card">
+            <div class="plot-head">
+              <h3>Rotor and dq quantities</h3>
+              <div class="legend">
+                <span class="key" style="color: var(--pink)"
+                  ><i class="swatch"></i>d axis / id</span
+                ><span class="key" style="color: var(--amber)"
+                  ><i class="swatch"></i>q axis / iq</span
+                >
+              </div>
+            </div>
+            <div class="motor-wrap"><canvas id="rotorCanvas"></canvas></div>
+          </article>
+          <div class="plots">
+            <article class="plot-card">
+              <div class="plot-head">
+                <h3>Speed</h3>
+                <div class="legend">
+                  <span class="key" style="color: var(--blue)"
+                    ><i class="swatch"></i>ω</span
+                  ><span class="key" style="color: #7c898e"
+                    ><i class="swatch"></i>ω*</span
+                  >
+                </div>
+              </div>
+              <div class="plot-wrap">
+                <canvas id="speedPlot"></canvas>
+                <div class="tip"></div>
+              </div>
+            </article>
+            <article class="plot-card">
+              <div class="plot-head">
+                <h3>Coordinator activity</h3>
+                <div class="legend">
+                  <span class="key" style="color: var(--teal)"
+                    ><i class="swatch"></i>α</span
+                  ><span class="key" style="color: #89969c"
+                    ><i class="swatch"></i>load pu</span
+                  >
+                </div>
+              </div>
+              <div class="plot-wrap">
+                <canvas id="alphaPlot"></canvas>
+                <div class="tip"></div>
+              </div>
+            </article>
+            <article class="plot-card">
+              <div class="plot-head">
+                <h3>d–q currents</h3>
+                <div class="legend">
+                  <span class="key" style="color: var(--pink)"
+                    ><i class="swatch"></i>id</span
+                  ><span class="key" style="color: var(--amber)"
+                    ><i class="swatch"></i>iq</span
+                  >
+                </div>
+              </div>
+              <div class="plot-wrap">
+                <canvas id="currentPlot"></canvas>
+                <div class="tip"></div>
+              </div>
+            </article>
+            <article class="plot-card">
+              <div class="plot-head">
+                <h3>Phase currents</h3>
+                <div class="legend">
+                  <span class="key" style="color: var(--blue)"
+                    ><i class="swatch"></i>ia</span
+                  ><span class="key" style="color: var(--amber)"
+                    ><i class="swatch"></i>ib</span
+                  ><span class="key" style="color: var(--ok)"
+                    ><i class="swatch"></i>ic</span
+                  >
+                </div>
+              </div>
+              <div class="plot-wrap">
+                <canvas id="phasePlot"></canvas>
+                <div class="tip"></div>
+              </div>
+            </article>
+            <article class="plot-card">
+              <div class="plot-head">
+                <h3>Electromagnetic and load torque</h3>
+                <div class="legend">
+                  <span class="key" style="color: var(--teal)"
+                    ><i class="swatch"></i>Te</span
+                  ><span class="key" style="color: #6941c6"
+                    ><i class="swatch"></i>TL</span
+                  >
+                </div>
+              </div>
+              <div class="plot-wrap">
+                <canvas id="torquePlot"></canvas>
+                <div class="tip"></div>
+              </div>
+            </article>
+          </div>
+        </div>
+        <div class="footer-note" id="sampleNote">
+          Averaged dq model · predictive current constraint · no field weakening
+        </div>
+      </section>
+    </main>
+
+    <dialog id="helpDialog">
+      <div class="modal-head">
+        <h2 id="helpTitle">Step help</h2>
+        <button class="close" id="closeHelp" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="helpBody"></div>
+    </dialog>
+
+    <script>
+      const PI = Math.PI,
+        TS = 100e-6;
+      const C = {
+        betaM: 0.15,
+        motionDamp: 0.4,
+        loadRatio: 0.5,
+        pDroop: 0.1,
+        tiS: 2,
+        stiffDamp: 0.25,
+        bandPct: 0.1,
+        bandFloor: 5,
+        omegaPS: 2 * PI * 200,
+        derivTau: 0.5e-3,
+        currentTau: 0.5e-3,
+        idBw: 800,
+        lambda: 0.08,
+        approach: 0.3,
+        r2: 0.5,
+        rhoEps: 0.02,
+      };
+      const rpm = (x) => (x * 2 * PI) / 60,
+        toRpm = (x) => (x * 60) / (2 * PI),
+        clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+      const smooth = (x) => {
+        x = clamp(x, 0, 1);
+        return x * x * (3 - 2 * x);
+      };
+      const motors = [
+        {
+          key: "M1",
+          name: "Original 1.5-kW PMSM",
+          vdc: 320,
+          tb: 4.8,
+          J: 8.7e-4,
+          rs: 4.5,
+          ld: 27e-3,
+          lq: 27e-3,
+          psi: 0.3898,
+          p: 2,
+          B: 1e-4,
+          imax: 8.21,
+          wb: 150,
+          note: "Original GVM-PID motor.",
+        },
+        {
+          key: "M2",
+          name: "Xu 2025 / Different PMSM",
+          vdc: 380,
+          tb: null,
+          J: 2.8e-2,
+          rs: 0.12,
+          ld: 6.5e-3,
+          lq: 6.5e-3,
+          psi: 0.18542,
+          p: 4,
+          B: 4.8e-3,
+          imax: 25,
+          wb: rpm(500),
+          note: "Xu 2025 SPMSM; torque base reconstructed by the common convention.",
+        },
+        {
+          key: "M3",
+          name: "Third PMSM (no-retune test)",
+          vdc: 96,
+          tb: 2.4,
+          J: 1.8e-3,
+          rs: 0.65,
+          ld: 2.8e-3,
+          lq: 3.2e-3,
+          psi: 0.085,
+          p: 4,
+          B: 3e-4,
+          imax: 9.4118,
+          wb: 120,
+          note: "Motor C in the cross-motor commissioning study.",
+        },
+        {
+          key: "M4",
+          name: "Paper PMSM",
+          vdc: 311,
+          tb: null,
+          J: 1.419e-3,
+          rs: 0.8,
+          ld: 5e-3,
+          lq: 5e-3,
+          psi: 0.09,
+          p: 4,
+          B: 2e-4,
+          imax: 13,
+          wb: rpm(1000),
+          note: "Motor D in the cross-motor commissioning study.",
+        },
+        {
+          key: "M5",
+          name: "Uploaded paper PMSM",
+          vdc: 1200,
+          tb: null,
+          J: 1.469e-2,
+          rs: 0.4578,
+          ld: 1.34e-3,
+          lq: 1.34e-3,
+          psi: 0.171,
+          p: 4,
+          B: 3.035e-4,
+          imax: 100,
+          wb: rpm(3000),
+          note: "Motor parameters from the uploaded source table.",
+        },
+        {
+          key: "M6",
+          name: "1.25-kW paper PMSM",
+          vdc: 310,
+          tb: 5,
+          J: 4.6e-4,
+          rs: 3.18,
+          ld: 8.5e-3,
+          lq: 8.5e-3,
+          psi: 0.325,
+          p: 2,
+          B: 0,
+          imax: 25,
+          wb: rpm(2000),
+          note: "L interpreted as 8.5 mH, consistent with the reported time constant.",
+        },
+        {
+          key: "M7",
+          name: "Lin–Chen YBL13S-115LZ",
+          vdc: 400,
+          tb: null,
+          J: 5e-3,
+          rs: 0.2648,
+          ld: 1.9e-3,
+          lq: 1.9e-3,
+          psi: 0.2382,
+          p: 4,
+          B: 4.4e-3,
+          imax: 15,
+          wb: rpm(800),
+          note: "15-A limit inferred from the reported 12.9-A peak.",
+        },
+        {
+          key: "M8",
+          name: "Wang 200-W single-loop PMSM",
+          vdc: 36,
+          tb: 0.6525,
+          J: 1.89e-5,
+          rs: 0.33,
+          ld: 0.9e-3,
+          lq: 0.9e-3,
+          psi: 0.0145,
+          p: 4,
+          B: 0,
+          imax: 22.5,
+          wb: rpm(3000),
+          note: "Imax is 3× rated current following the paper design guideline.",
+        },
+        {
+          key: "M9",
+          name: "Hua bearingless IPMSM",
+          vdc: 180,
+          tb: null,
+          J: 0.0010082,
+          rs: 2.316,
+          ld: 13.42e-3,
+          lq: 24.51e-3,
+          psi: 0.165,
+          p: 2,
+          B: 0,
+          imax: 8,
+          wb: rpm(3000),
+          note: "J is estimated from rotor mass and radius; B is unreported.",
+        },
+        {
+          key: "M10",
+          name: "Khan–Rahman 1-hp IPMSM",
+          vdc: 294.1564209736,
+          tb: 3.9554612937,
+          J: 0.003,
+          rs: 1.93,
+          ld: 42.44e-3,
+          lq: 79.57e-3,
+          psi: 0.311,
+          p: 2,
+          B: 0.001,
+          imax: 3,
+          wb: 188.6,
+          note: "Vdc=√2·208 V derived from rated line-line RMS voltage.",
+        },
+        {
+          key: "M11",
+          name: "Teymoori 5-MW propulsion PMSM",
+          vdc: 4666.9047558,
+          tb: 159154.9430919,
+          J: 500,
+          rs: 0.066,
+          ld: 2.5e-3,
+          lq: 2.5e-3,
+          psi: 4,
+          p: 11,
+          B: 50.6605918212,
+          imax: 3617.1577975,
+          wb: rpm(300),
+          note: "J, B, current limit and dc link are documented proxies.",
+        },
+        {
+          key: "M12",
+          name: "Liu 2024 CCS-PSC SPMSM",
+          vdc: 570,
+          tb: 14,
+          J: 7.78e-3,
+          rs: 0.95,
+          ld: 9.8e-3,
+          lq: 9.8e-3,
+          psi: 0.225,
+          p: 3,
+          B: 0,
+          imax: 10,
+          wb: rpm(2700),
+          note: "380-V rating mapped to a 570-V dc-link proxy; B unreported.",
+        },
+        {
+          key: "M13",
+          name: "Fan 2024 inverse-optimal PMSM",
+          vdc: 60,
+          tb: null,
+          J: 7.06e-4,
+          rs: 0.72,
+          ld: 0.4e-3,
+          lq: 0.4e-3,
+          psi: 0.0192,
+          p: 4,
+          B: 3.5e-4,
+          imax: 12,
+          wb: rpm(800),
+          note: "60-V and 12-A paper ratings; torque base reconstructed.",
+        },
+        {
+          key: "M14",
+          name: "Li 2025 VRSTM-HODOB PMSM",
+          vdc: 120,
+          tb: null,
+          J: 2.77e-4,
+          rs: 1.55,
+          ld: 6.71e-3,
+          lq: 6.71e-3,
+          psi: 0.047,
+          p: 10,
+          B: 5.23e-4,
+          imax: 10,
+          wb: rpm(1200),
+          note: "Vdc and Imax are documented assumptions from figure limits.",
+        },
+        {
+          key: "M15",
+          name: "Preindl–Bolognani MP-DSC IPMSM",
+          vdc: 200,
+          tb: 7.8,
+          J: 1e-3,
+          rs: 0.636,
+          ld: 12e-3,
+          lq: 20e-3,
+          psi: 0.088,
+          p: 5,
+          B: 1.7e-3,
+          imax: 10,
+          wb: rpm(1200),
+          note: "1200-rpm operating point is the reported no-field-weakening limit.",
+        },
+        {
+          key: "M16",
+          name: "Kong 2024 DFTSMPC SPMSM",
+          vdc: 50,
+          tb: null,
+          J: 4.4109e-5,
+          rs: 0.3,
+          ld: 0.46e-3,
+          lq: 0.46e-3,
+          psi: 0.0371,
+          p: 2,
+          B: 0,
+          imax: 10,
+          wb: rpm(1000),
+          note: "10-A limit inferred from published current axes; B unreported.",
+        },
+        {
+          key: "M17",
+          name: "Wang 2025 constrained single-loop PMSM",
+          vdc: 48,
+          tb: 0.273,
+          J: 7.06e-4,
+          rs: 0.76,
+          ld: 0.4e-3,
+          lq: 0.4e-3,
+          psi: 0.0192,
+          p: 4,
+          B: 3.5e-4,
+          imax: 10,
+          wb: rpm(1000),
+          note: "Uses the paper’s explicit 10-A simulation constraint.",
+        },
+        {
+          key: "M18",
+          name: "Liang 2026 Tube-PPC PMSM",
+          vdc: 300,
+          tb: 4,
+          J: 8.5e-4,
+          rs: 2.76,
+          ld: 6.42e-3,
+          lq: 6.42e-3,
+          psi: 0.1667,
+          p: 4,
+          B: 0,
+          imax: 10,
+          wb: rpm(1500),
+          note: "Imax inferred from current axes; B unreported.",
+        },
+        {
+          key: "M19",
+          name: "Li–Zhou–Yu terminal-SMC PMSM",
+          vdc: 901.2261177,
+          tb: 2.3873241464,
+          J: 1.78e-4,
+          rs: 1.74,
+          ld: 4e-3,
+          lq: 4e-3,
+          psi: 0.402,
+          p: 4,
+          B: 7.403e-5,
+          imax: 10,
+          wb: rpm(3000),
+          note: "Vdc is a documented feasibility proxy for the printed 0.402-Wb flux.",
+        },
+      ];
+      let mode = "ramp",
+        activeMotor = null,
+        lastResult = null,
+        currentVisible = 0,
+        animationId = 0,
+        maxUnlocked = 1,
+        playback = {
+          data: null,
+          q: 0,
+          duration: 0,
+          playing: false,
+          resumeAfterScrub: false,
+          unlock: false,
+          completed: false,
+        };
+      const $ = (id) => document.getElementById(id),
+        motorSel = $("motor");
+      motors.forEach((m, i) =>
+        motorSel.add(new Option(`${m.key} · ${m.name}`, i)),
+      );
+      function props(m) {
+        const kt = 1.5 * m.p * m.psi,
+          ke = m.p * m.psi,
+          vmax = m.vdc / Math.sqrt(3),
+          tb = m.tb ?? 0.5 * kt * m.imax,
+          tau = m.lq / m.rs;
+        return { kt, ke, vmax, tb, tau };
+      }
+      function gains(m) {
+        const p = props(m),
+          wbnd = (1 - C.betaM) * m.wb,
+          vhead = Math.max(0, p.vmax - p.ke * wbnd),
+          kpM = vhead / Math.max(C.betaM * m.wb, 1e-12),
+          kdM = C.motionDamp * p.tau * kpM,
+          dt = C.loadRatio * p.tb,
+          kpS = (m.rs / p.kt) * (dt / C.pDroop),
+          kiS = kpS / C.tiS,
+          kdS = C.stiffDamp * p.tau * kpS;
+        return { raw: [kpM, 0, kdM, kpS, kiS, kdS], vhead };
+      }
+      const fmt = (x, d = 4) => {
+        if (!Number.isFinite(x)) return "—";
+        const a = Math.abs(x);
+        return a && (a < 1e-3 || a >= 1e4)
+          ? x.toExponential(3)
+          : x.toFixed(d).replace(/0+$/, "").replace(/\.$/, "");
+      };
+      const paramDefs = [
+        ["vdc", "DC link", "V", 1],
+        ["rs", "Stator resistance", "Ω", 1],
+        ["ld", "Ld", "mH", 1000],
+        ["lq", "Lq", "mH", 1000],
+        ["psi", "PM flux", "Wb", 1],
+        ["p", "Pole pairs", "", 1],
+        ["J", "Inertia", "kg·m²", 1],
+        ["B", "Viscous friction", "N·m·s/rad", 1],
+        ["imax", "Current limit", "A", 1],
+        ["wb", "Base speed", "rpm", "rpm"],
+        ["tb", "Base torque", "N·m", 1],
+      ];
+      function motorFields(m) {
+        const p = props(m);
+        $("parameterGrid").innerHTML = paramDefs
+          .map(([key, label, unit, mul]) => {
+            let value = key === "tb" ? p.tb : m[key];
+            if (mul === "rpm") value = toRpm(value);
+            else value *= mul;
+            return `<div class="field"><label for="param_${key}">${label}</label><div class="unit-field"><input id="param_${key}" type="number" step="any" value="${value}"><span>${unit}</span></div></div>`;
+          })
+          .join("");
+      }
+      function readMotor() {
+        const m = { ...activeMotor };
+        paramDefs.forEach(([key, , , mul]) => {
+          let v = Number($("param_" + key).value);
+          if (!Number.isFinite(v))
+            throw new Error(`Invalid motor parameter: ${key}`);
+          if (mul === "rpm") v = rpm(v);
+          else v /= mul;
+          m[key] = v;
+        });
+        m.p = Math.max(1, Math.round(m.p));
+        if (
+          m.vdc <= 0 ||
+          m.rs <= 0 ||
+          m.ld <= 0 ||
+          m.lq <= 0 ||
+          m.psi <= 0 ||
+          m.J <= 0 ||
+          m.imax <= 0 ||
+          m.wb <= 0 ||
+          m.tb <= 0
+        )
+          throw new Error(
+            "Motor parameters must be positive (friction B may be zero).",
+          );
+        activeMotor = m;
+        return m;
+      }
+      function selectMotor() {
+        activeMotor = { ...motors[+motorSel.value] };
+        motorFields(activeMotor);
+        const p = props(activeMotor);
+        $("targetRpm").value = fmt(toRpm(activeMotor.wb), 2);
+        $("loadNm").value = fmt(0.8 * p.tb, 4);
+        $("sourceNote").textContent = activeMotor.note;
+        $("motorSummary").textContent =
+          `${activeMotor.key} · ${activeMotor.name}`;
+        $("gainSummary").textContent = "Waiting for motor parameters";
+        $("statusText").textContent = "Verify motor parameters";
+        maxUnlocked = 1;
+        openStep(1);
+      }
+      function writeGains() {
+        const g = gains(activeMotor),
+          ids = ["gmKp", "gmKi", "gmKd", "gsKp", "gsKi", "gsKd"];
+        ids.forEach((id, i) => ($(id).value = fmt(g.raw[i], 8)));
+        $("gmScale").value = 1;
+        $("gsScale").value = 1;
+        const p = props(activeMotor);
+        $("derivedStrip").innerHTML =
+          `<code>k<sub>t</sub> = ${fmt(p.kt, 5)} N·m/A</code><code>τ<sub>e</sub> = ${fmt(p.tau * 1000, 4)} ms</code><code>V<sub>head</sub> = ${fmt(g.vhead, 3)} V</code><code>T<sub>B</sub> = ${fmt(p.tb, 4)} N·m</code>`;
+        updateGainSummary();
+      }
+      function readGainVectors() {
+        const get = (id) => {
+            const v = Number($(id).value);
+            if (!Number.isFinite(v)) throw new Error(`Invalid gain: ${id}`);
+            return v;
+          },
+          sm = Math.max(0, get("gmScale")),
+          ss = Math.max(0, get("gsScale"));
+        return {
+          gm: [get("gmKp") * sm, get("gmKi") * sm, get("gmKd") * sm],
+          gs: [get("gsKp") * ss, get("gsKi") * ss, get("gsKd") * ss],
+          sm,
+          ss,
+        };
+      }
+      function updateGainSummary() {
+        try {
+          const g = readGainVectors();
+          $("gainSummary").textContent =
+            `Gmotion ×${fmt(g.sm, 2)} · Gss ×${fmt(g.ss, 2)}`;
+        } catch {}
+      }
+      function openStep(n) {
+        if (n > maxUnlocked) return;
+        document.querySelectorAll(".step-card").forEach((card) => {
+          const s = +card.dataset.step;
+          card.classList.toggle("locked", s > maxUnlocked);
+          card.classList.toggle("open", s === n);
+          card.hidden = s !== n;
+        });
+        document.querySelectorAll(".step-tab").forEach((tab) => {
+          const s = +tab.dataset.tab,
+            active = s === n;
+          tab.disabled = s > maxUnlocked;
+          tab.classList.toggle("active", active);
+          tab.classList.toggle("done", s < maxUnlocked && !active);
+          tab.setAttribute("aria-selected", active);
+          tab.tabIndex = active ? 0 : -1;
+        });
+      }
+      function hermiteSat(z) {
+        const u = clamp(z / 1.5, -1, 1);
+        return 1.5 * u - 0.5 * u * u * u;
+      }
+      function simulate(withLoad) {
+        const m = { ...activeMotor },
+          p = props(m),
+          gv = readGainVectors(),
+          gm = gv.gm,
+          gs = gv.gs;
+        const target = rpm(Number($("targetRpm").value) || 0),
+          simT = clamp((Number($("simMs").value) || 600) / 1000, 0.1, 5),
+          start = clamp((Number($("stepAtMs").value) || 0) / 1000, 0, simT),
+          rampT = Math.max((Number($("rampMs").value) || 0.1) / 1000, 1e-6),
+          requestedLoadAt = clamp(
+            (Number($("loadAtMs").value) || 0) / 1000,
+            0,
+            simT,
+          ),
+          loadAt = withLoad ? requestedLoadAt : simT + TS,
+          loadNm = withLoad ? Number($("loadNm").value) || 0 : 0;
+        const n = Math.floor(simT / TS) + 1,
+          out = {
+            t: new Float64Array(n),
+            ref: new Float64Array(n),
+            w: new Float64Array(n),
+            id: new Float64Array(n),
+            iq: new Float64Array(n),
+            alpha: new Float64Array(n),
+            z1: new Float64Array(n),
+            z2: new Float64Array(n),
+            load: new Float64Array(n),
+            vmag: new Float64Array(n),
+            torque: new Float64Array(n),
+            theta: new Float64Array(n),
+          };
+        let w = 0,
+          id = 0,
+          iq = 0,
+          theta = 0,
+          intq = 0,
+          intd = 0,
+          wOld = 0,
+          eOld = 0,
+          deF = 0,
+          accF = 0,
+          iqOld = 0,
+          diqF = 0;
+        const wc = 2 * PI * C.idBw,
+          kpd = wc * m.ld,
+          kid = wc * m.rs;
+        for (let k = 0; k < n; k++) {
+          const t = k * TS,
+            ref =
+              t < start
+                ? 0
+                : mode === "step"
+                  ? target
+                  : target * clamp((t - start) / rampT, 0, 1),
+            load = t >= loadAt ? loadNm : 0,
+            e = ref - w,
+            acc = (w - wOld) / TS;
+          wOld = w;
+          accF += (TS / (C.derivTau + TS)) * (acc - accF);
+          const de = (e - eOld) / TS;
+          eOld = e;
+          deF += (TS / (C.derivTau + TS)) * (de - deF);
+          const eb = Math.max(C.bandFloor, C.bandPct * Math.abs(ref)),
+            z1 = e / eb,
+            z2 = deF / Math.max(C.omegaPS * eb, 1e-12),
+            rho = z1 * z1 + z2 * z2,
+            activity = smooth(rho / (rho + C.r2)),
+            path = z2 + C.lambda * hermiteSat(z1),
+            risk = smooth(clamp((-z1 * path) / (rho + C.rhoEps), 0, 1)),
+            alpha = smooth(
+              clamp(activity + C.approach * (1 - activity) * risk, 0, 1),
+            );
+          const kp = alpha * gm[0] + (1 - alpha) * gs[0],
+            ki = alpha * gm[1] + (1 - alpha) * gs[1],
+            kd = alpha * gm[2] + (1 - alpha) * gs[2],
+            diq = (iq - iqOld) / TS;
+          iqOld = iq;
+          diqF += (TS / (C.currentTau + TS)) * (diq - diqF);
+          const iqHat = iq + TS * diqF,
+            rhoi = smooth((Math.abs(iqHat) - 0.6 * m.imax) / (0.4 * m.imax)),
+            kpe = (1 - rhoi) * kp,
+            kie = (1 - rhoi) * ki,
+            cand = clamp(intq + kie * e * TS, -p.vmax, p.vmax),
+            vqRaw = kpe * e + cand - kd * accF + p.ke * w,
+            bemf = m.rs * iq + p.ke * w,
+            viMax = bemf + (m.lq / TS) * (m.imax - iq),
+            viMin = bemf + (m.lq / TS) * (-m.imax - iq);
+          let lo = Math.max(-p.vmax, Math.min(viMin, viMax)),
+            hi = Math.min(p.vmax, Math.max(viMin, viMax));
+          if (lo > hi) {
+            lo = -p.vmax;
+            hi = p.vmax;
+          }
+          let vq = clamp(vqRaw, lo, hi);
+          const inward = (vqRaw > hi && e < 0) || (vqRaw < lo && e > 0);
+          if (rhoi < 0.95 && (Math.abs(vqRaw - vq) < 1e-12 || inward))
+            intq = cand;
+          const ed = -id,
+            candD = intd + kid * ed * TS,
+            vdRaw = kpd * ed + candD;
+          let vd = clamp(vdRaw, -p.vmax, p.vmax);
+          if (
+            Math.abs(vdRaw - vd) < 1e-12 ||
+            Math.sign(ed) !== Math.sign(vdRaw)
+          )
+            intd = candD;
+          intd = clamp(intd, -p.vmax, p.vmax);
+          const mag = Math.hypot(vd, vq);
+          if (mag > p.vmax) {
+            vd *= p.vmax / mag;
+            vq *= p.vmax / mag;
+          }
+          const we = m.p * w,
+            did = (vd - m.rs * id + we * m.lq * iq) / m.ld,
+            di = (vq - m.rs * iq - we * m.ld * id - we * m.psi) / m.lq;
+          id += TS * did;
+          iq += TS * di;
+          const torque = 1.5 * m.p * (m.psi * iq + (m.ld - m.lq) * id * iq);
+          w += (TS * (torque - load - m.B * w)) / m.J;
+          theta = (theta + w * TS) % (2 * PI);
+          out.t[k] = t;
+          out.ref[k] = ref;
+          out.w[k] = w;
+          out.id[k] = id;
+          out.iq[k] = iq;
+          out.alpha[k] = alpha;
+          out.z1[k] = z1;
+          out.z2[k] = z2;
+          out.load[k] = load;
+          out.vmag[k] = Math.hypot(vd, vq);
+          out.torque[k] = torque;
+          out.theta[k] = theta;
+          if (!Number.isFinite(w) || Math.abs(w) > 1e7)
+            throw new Error(
+              "Numerical divergence: try smaller gains or a shorter simulation.",
+            );
+        }
+        out.info = {
+          m,
+          p,
+          target,
+          simT,
+          start,
+          rampT,
+          loadAt,
+          requestedLoadAt,
+          loadNm,
+          n,
+          withLoad,
+          mode,
+        };
+        return out;
+      }
+      function metrics(d) {
+        const { target, start, rampT } = d.info,
+          event = start + (d.info.mode === "ramp" ? rampT : 0),
+          n = d.t.length,
+          absTar = Math.abs(target) || 1,
+          dir = Math.sign(target) || 1;
+        let i10 = -1,
+          i90 = -1,
+          peak = -Infinity,
+          peakIq = 0,
+          peakV = 0;
+        for (let i = 0; i < n; i++) {
+          const y = dir * d.w[i],
+            tar = dir * target;
+          if (d.t[i] >= start && i10 < 0 && y >= 0.1 * tar) i10 = i;
+          if (d.t[i] >= start && i90 < 0 && y >= 0.9 * tar) i90 = i;
+          if (d.t[i] >= event && d.t[i] < d.info.loadAt)
+            peak = Math.max(peak, y);
+          peakIq = Math.max(peakIq, Math.abs(d.iq[i]));
+          peakV = Math.max(peakV, d.vmag[i]);
+        }
+        let settle = NaN;
+        const end =
+          d.info.withLoad && d.info.loadAt > event
+            ? d.info.loadAt
+            : d.info.simT;
+        for (let i = 0; i < n; i++) {
+          if (d.t[i] < event || d.t[i] > end) continue;
+          let ok = true;
+          for (let j = i; j < n && d.t[j] <= end; j++) {
+            if (Math.abs(d.w[j] - target) > 0.02 * absTar) {
+              ok = false;
+              break;
+            }
+          }
+          if (ok) {
+            settle = d.t[i] - event;
+            break;
+          }
+        }
+        const tail = Math.min(n, Math.max(1, Math.floor(0.05 / TS)));
+        let mean = 0;
+        for (let i = n - tail; i < n; i++) mean += d.w[i];
+        mean /= tail;
+        return {
+          rise: i10 >= 0 && i90 >= 0 ? (d.t[i90] - d.t[i10]) * 1000 : NaN,
+          settle: settle * 1000,
+          over: Number.isFinite(peak)
+            ? Math.max(0, ((peak - Math.abs(target)) / absTar) * 100)
+            : NaN,
+          peakIq,
+          peakV: peakV / d.info.p.vmax,
+          err: (Math.abs(target - mean) / absTar) * 100,
+        };
+      }
+      const colors = {
+        grid: "#cbd2d7",
+        minor: "#edf0f2",
+        axis: "#687680",
+        text: "#344854",
+        blue: "#00629b",
+        ref: "#46545e",
+        pink: "#a52052",
+        amber: "#d97800",
+        teal: "#008f95",
+        green: "#23724c",
+        violet: "#6941c6",
+        load: "#737f87",
+      };
+      function bounds(series, includeZero = true) {
+        let mn = Infinity,
+          mx = -Infinity;
+        series.forEach((s) =>
+          s.data.forEach((v) => {
+            if (Number.isFinite(v)) {
+              mn = Math.min(mn, v);
+              mx = Math.max(mx, v);
+            }
+          }),
+        );
+        if (includeZero) {
+          mn = Math.min(mn, 0);
+          mx = Math.max(mx, 0);
+        }
+        if (!Number.isFinite(mn) || mn === mx) {
+          mn -= 1;
+          mx += 1;
+        }
+        const pad = 0.08 * (mx - mn);
+        return [mn - pad, mx + pad];
+      }
+      function linePlot(id, x, series, yLabel, fullEnd, yb, cursorT) {
+        const canvas = $(id),
+          wrap = canvas.parentElement,
+          tip = wrap.querySelector(".tip"),
+          dpr = devicePixelRatio || 1,
+          w = wrap.clientWidth,
+          h = wrap.clientHeight;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        const P = { l: 70, r: 18, t: 18, b: 43 },
+          pw = w - P.l - P.r,
+          ph = h - P.t - P.b,
+          X = (v) => P.l + (v / fullEnd) * pw,
+          Y = (v) => P.t + ((yb[1] - v) / (yb[1] - yb[0])) * ph,
+          useSeconds = fullEnd >= 1,
+          timeScale = useSeconds ? 1 : 1000,
+          timeUnit = useSeconds ? "s" : "ms";
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 10; i++) {
+          const xx = P.l + (pw * i) / 10;
+          ctx.strokeStyle = i % 2 ? colors.minor : colors.grid;
+          ctx.beginPath();
+          ctx.moveTo(xx, P.t);
+          ctx.lineTo(xx, P.t + ph);
+          ctx.stroke();
+        }
+        for (let i = 0; i <= 8; i++) {
+          const yy = P.t + (ph * i) / 8;
+          ctx.strokeStyle = i % 2 ? colors.minor : colors.grid;
+          ctx.beginPath();
+          ctx.moveTo(P.l, yy);
+          ctx.lineTo(P.l + pw, yy);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = colors.axis;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(P.l, P.t);
+        ctx.lineTo(P.l, P.t + ph);
+        ctx.lineTo(P.l + pw, P.t + ph);
+        ctx.stroke();
+        ctx.font = "12px Arial, sans-serif";
+        ctx.fillStyle = colors.text;
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        for (let i = 0; i <= 4; i++) {
+          const yy = P.t + (ph * i) / 4,
+            val = yb[1] - ((yb[1] - yb[0]) * i) / 4;
+          ctx.fillText(fmt(val, 2), P.l - 9, yy);
+        }
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        for (let i = 0; i <= 5; i++) {
+          const xx = P.l + (pw * i) / 5,
+            val = ((fullEnd * i) / 5) * timeScale;
+          ctx.fillText(fmt(val, useSeconds ? 2 : 0), xx, P.t + ph + 8);
+        }
+        ctx.font = "italic 13px Cambria, Georgia, serif";
+        ctx.save();
+        ctx.translate(16, P.t + ph / 2);
+        ctx.rotate(-PI / 2);
+        ctx.fillText(yLabel, 0, 0);
+        ctx.restore();
+        ctx.fillText(`time (${timeUnit})`, P.l + pw / 2, h - 18);
+        const step = Math.max(1, Math.ceil(x.length / 1800));
+        series.forEach((s) => {
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = s.width || 2.1;
+          ctx.setLineDash(s.dash || []);
+          ctx.beginPath();
+          for (let i = 0; i < x.length; i += step) {
+            const xx = X(x[i]),
+              yy = Y(s.data[i]);
+            i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        });
+        ctx.strokeStyle = "#d97800";
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(X(cursorT), P.t);
+        ctx.lineTo(X(cursorT), P.t + ph);
+        ctx.stroke();
+        canvas.onpointermove = (e) => {
+          const r = canvas.getBoundingClientRect(),
+            px = e.clientX - r.left;
+          if (px < P.l || px > w - P.r || !x.length) {
+            tip.style.display = "none";
+            return;
+          }
+          const t = ((px - P.l) / pw) * fullEnd,
+            i = clamp(Math.round(t / TS), 0, x.length - 1);
+          tip.innerHTML =
+            `<b>t = ${fmt(x[i] * timeScale, useSeconds ? 4 : 2)} ${timeUnit}</b><br>` +
+            series
+              .map(
+                (s) =>
+                  `<span style="color:${s.color}">${s.name}: ${fmt(s.data[i], 3)}</span>`,
+              )
+              .join("<br>");
+          tip.style.display = "block";
+          tip.style.left = Math.min(px + 10, w - 145) + "px";
+          tip.style.top = "14px";
+        };
+        canvas.onpointerleave = () => (tip.style.display = "none");
+      }
+      function drawMotor(d, index) {
+        const canvas = $("rotorCanvas"),
+          r = canvas.getBoundingClientRect(),
+          dpr = devicePixelRatio || 1,
+          w = r.width,
+          h = r.height,
+          m = d.info.m;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        const wide = w > 650,
+          x = wide ? w * 0.31 : w * 0.5,
+          y = h * 0.48,
+          R = Math.min(wide ? w * 0.18 : w * 0.3, h * 0.37),
+          rr = R * 0.64,
+          th = d.theta[index] % (2 * PI),
+          qa = PI / (2 * m.p);
+        ctx.strokeStyle = "#34434d";
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.arc(x, y, R, 0, 2 * PI);
+        ctx.stroke();
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(th);
+        ctx.fillStyle = "#c7cdd1";
+        ctx.beginPath();
+        ctx.arc(0, 0, rr, 0, 2 * PI);
+        ctx.fill();
+        const poles = 2 * m.p,
+          seg = (2 * PI) / poles;
+        for (let k = 0; k < poles; k++) {
+          ctx.fillStyle = k % 2 ? colors.blue : "#b83232";
+          ctx.beginPath();
+          ctx.arc(0, 0, rr, k * seg + 0.08 * seg, (k + 1) * seg - 0.08 * seg);
+          ctx.arc(
+            0,
+            0,
+            rr * 0.81,
+            (k + 1) * seg - 0.08 * seg,
+            k * seg + 0.08 * seg,
+            true,
+          );
+          ctx.fill();
+        }
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = colors.pink;
+        ctx.beginPath();
+        ctx.moveTo(-R, 0);
+        ctx.lineTo(R, 0);
+        ctx.stroke();
+        ctx.strokeStyle = colors.amber;
+        ctx.beginPath();
+        ctx.moveTo(-R * Math.cos(qa), -R * Math.sin(qa));
+        ctx.lineTo(R * Math.cos(qa), R * Math.sin(qa));
+        ctx.stroke();
+        const scale = (R * 0.8) / Math.max(m.imax, 1);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = colors.pink;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(d.id[index] * scale, 0);
+        ctx.stroke();
+        ctx.strokeStyle = colors.amber;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(
+          d.iq[index] * scale * Math.cos(qa),
+          d.iq[index] * scale * Math.sin(qa),
+        );
+        ctx.stroke();
+        ctx.restore();
+        const tx = wide ? w * 0.61 : 14,
+          ty = wide ? 70 : h - 82;
+        ctx.fillStyle = "#17212a";
+        ctx.font = "600 19px Cambria, Georgia, serif";
+        ctx.fillText(
+          m.key + " · " + fmt(toRpm(d.w[index]), 1) + " rpm",
+          tx,
+          ty,
+        );
+        ctx.font = "13px Cascadia Mono, Consolas, monospace";
+        ctx.fillStyle = "#56636d";
+        ctx.fillText("id = " + fmt(d.id[index], 3) + " A", tx, ty + 28);
+        ctx.fillText("iq = " + fmt(d.iq[index], 3) + " A", tx, ty + 50);
+        ctx.fillText("Te = " + fmt(d.torque[index], 3) + " N·m", tx, ty + 72);
+        ctx.fillStyle = colors.teal;
+        ctx.fillText("alpha = " + fmt(d.alpha[index], 3), tx, ty + 94);
+      }
+      function preparePlots(d) {
+        const theta = Array.from(d.theta),
+          id = Array.from(d.id),
+          iq = Array.from(d.iq),
+          ia = new Array(d.t.length),
+          ib = new Array(d.t.length),
+          ic = new Array(d.t.length),
+          s3 = Math.sqrt(3) / 2;
+        for (let i = 0; i < ia.length; i++) {
+          const a = d.info.m.p * theta[i],
+            ca = Math.cos(a),
+            sa = Math.sin(a),
+            ial = id[i] * ca - iq[i] * sa,
+            ibe = id[i] * sa + iq[i] * ca;
+          ia[i] = ial;
+          ib[i] = -0.5 * ial + s3 * ibe;
+          ic[i] = -0.5 * ial - s3 * ibe;
+        }
+        d.plot = {
+          t: Array.from(d.t),
+          speed: Array.from(d.w, toRpm),
+          ref: Array.from(d.ref, toRpm),
+          id,
+          iq,
+          alpha: Array.from(d.alpha),
+          load: Array.from(d.load, (x) => x / d.info.p.tb),
+          loadNm: Array.from(d.load),
+          torque: Array.from(d.torque),
+          ia,
+          ib,
+          ic,
+        };
+        d.plot.speedBounds = bounds([
+          { data: d.plot.speed },
+          { data: d.plot.ref },
+        ]);
+        d.plot.currentBounds = bounds([{ data: id }, { data: iq }]);
+        d.plot.phaseBounds = bounds([{ data: ia }, { data: ib }, { data: ic }]);
+        d.plot.torqueBounds = bounds([
+          { data: d.plot.torque },
+          { data: d.plot.loadNm },
+        ]);
+        d.plot.alphaBounds = [-0.08, 1.08];
+      }
+      function renderPlots(d, end) {
+        const q = d.plot,
+          n = clamp(Math.floor(end), 2, q.t.length),
+          cut = (a) => a.slice(0, n),
+          t = cut(q.t),
+          cursor = t[t.length - 1],
+          fraction = cursor / d.info.simT;
+        linePlot(
+          "speedPlot",
+          t,
+          [
+            { name: "ω", data: cut(q.speed), color: colors.blue },
+            {
+              name: "ω*",
+              data: cut(q.ref),
+              color: colors.ref,
+              dash: [7, 5],
+              width: 1.6,
+            },
+          ],
+          "Speed (rpm)",
+          d.info.simT,
+          q.speedBounds,
+          cursor,
+        );
+        linePlot(
+          "alphaPlot",
+          t,
+          [
+            { name: "α", data: cut(q.alpha), color: colors.teal },
+            {
+              name: "load / TB",
+              data: cut(q.load),
+              color: colors.load,
+              dash: [6, 4],
+              width: 1.5,
+            },
+          ],
+          "α / load (pu)",
+          d.info.simT,
+          q.alphaBounds,
+          cursor,
+        );
+        linePlot(
+          "currentPlot",
+          t,
+          [
+            { name: "id", data: cut(q.id), color: colors.pink },
+            { name: "iq", data: cut(q.iq), color: colors.amber },
+          ],
+          "Current (A)",
+          d.info.simT,
+          q.currentBounds,
+          cursor,
+        );
+        linePlot(
+          "phasePlot",
+          t,
+          [
+            { name: "ia", data: cut(q.ia), color: colors.blue },
+            { name: "ib", data: cut(q.ib), color: colors.amber },
+            { name: "ic", data: cut(q.ic), color: colors.green },
+          ],
+          "Phase current (A)",
+          d.info.simT,
+          q.phaseBounds,
+          cursor,
+        );
+        linePlot(
+          "torquePlot",
+          t,
+          [
+            { name: "Te", data: cut(q.torque), color: colors.teal },
+            {
+              name: "TL",
+              data: cut(q.loadNm),
+              color: colors.violet,
+              dash: [7, 5],
+              width: 1.6,
+            },
+          ],
+          "Torque (N·m)",
+          d.info.simT,
+          q.torqueBounds,
+          cursor,
+        );
+        drawMotor(d, n - 1);
+        $("clock").textContent =
+          d.info.simT >= 1
+            ? `t = ${fmt(cursor, 3)} s`
+            : `t = ${fmt(cursor * 1000, 1)} ms`;
+        $("progressFill").style.width = `${fraction * 100}%`;
+        $("timeScrubber").value = Math.round(fraction * 1000);
+        $("timeScrubber").setAttribute(
+          "aria-valuetext",
+          d.info.simT >= 1
+            ? fmt(cursor, 3) + " seconds"
+            : fmt(cursor * 1000, 1) + " milliseconds",
+        );
+        $("sampleNote").textContent =
+          `${d.info.n.toLocaleString()} samples · Ts = ${fmt(TS * 1e6, 0)} µs · averaged dq plant · predictive current constraint · no field weakening`;
+      }
+      function renderMetrics(d) {
+        const mr = metrics(d);
+        $("mRise").textContent = fmt(mr.rise, 2);
+        $("mSettle").textContent = fmt(mr.settle, 2);
+        $("mOver").textContent = fmt(mr.over, 3);
+        $("mIq").textContent = fmt(mr.peakIq, 3);
+        $("mIqSub").textContent = `A · ${fmt(mr.peakIq / d.info.m.imax, 3)} pu`;
+        $("mVolt").textContent = fmt(mr.peakV, 3);
+        $("mErr").textContent = fmt(mr.err, 3);
+      }
+      function renderAt(d, q) {
+        playback.q = clamp(q, 0, 1);
+        currentVisible = Math.max(
+          2,
+          Math.floor(1 + playback.q * (d.t.length - 1)),
+        );
+        renderPlots(d, currentVisible);
+      }
+      function completePlayback() {
+        if (!playback.data) return;
+        playback.playing = false;
+        renderAt(playback.data, 1);
+        renderMetrics(playback.data);
+        $("statusText").textContent = playback.data.info.withLoad
+          ? "Loaded response complete"
+          : "No-load response complete";
+        const first = !playback.completed;
+        playback.completed = true;
+        if (first && playback.unlock) {
+          maxUnlocked = 4;
+          openStep(4);
+          $("loadSummary").textContent =
+            `${fmt(Number($("loadNm").value), 3)} N·m at ${fmt(Number($("loadAtMs").value), 0)} ms · default 80% TB`;
+        }
+      }
+      function startPlayback() {
+        if (!playback.data || playback.q >= 1) return;
+        cancelAnimationFrame(animationId);
+        playback.playing = true;
+        const started = performance.now() - playback.q * playback.duration;
+        function frame(now) {
+          if (!playback.playing) return;
+          const q = Math.min(1, (now - started) / playback.duration);
+          renderAt(playback.data, q);
+          if (q < 1) animationId = requestAnimationFrame(frame);
+          else completePlayback();
+        }
+        animationId = requestAnimationFrame(frame);
+      }
+      function animate(d, unlockLoad = false) {
+        cancelAnimationFrame(animationId);
+        currentVisible = 2;
+        $("results").classList.add("visible");
+        ["mRise", "mSettle", "mOver", "mIq", "mVolt", "mErr"].forEach(
+          (id) => ($(id).textContent = "—"),
+        );
+        playback = {
+          data: d,
+          q: 0,
+          duration: Math.max(100, d.info.simT * 1000),
+          playing: false,
+          resumeAfterScrub: false,
+          unlock: unlockLoad,
+          completed: false,
+        };
+        renderAt(d, 0);
+        startPlayback();
+      }
+      function run(withLoad) {
+        try {
+          $("statusText").textContent = "Simulating…";
+          const d = simulate(withLoad);
+          preparePlots(d);
+          lastResult = d;
+          $("inputSummary").textContent =
+            `${mode === "step" ? "Step" : fmt(Number($("rampMs").value), 0) + " ms ramp"} to ${fmt(Number($("targetRpm").value), 0)} rpm`;
+          animate(d, !withLoad);
+        } catch (err) {
+          $("statusText").textContent = err.message;
+          console.error(err);
+        }
+      }
+      const helps = {
+        1: {
+          title: "Step 1 · Motor parameters",
+          body: `<h3>What you are defining</h3><p>The electrical and mechanical plant used by the averaged dq simulation. Every field is editable, so a literature motor can be corrected before commissioning.</p><div class="eq">T<sub>e</sub> = 1.5 p[ψ<sub>f</sub>i<sub>q</sub> + (L<sub>d</sub>−L<sub>q</sub>)i<sub>d</sub>i<sub>q</sub>]</div><p>“Base torque” is used to normalize the disturbance. When a source did not report it, the stored dataset uses a documented reconstruction.</p><div class="callout">Pole pairs p—not total poles—are entered here. Base speed is mechanical rpm.</div>`,
+        },
+        2: {
+          title: "Step 2 · First-shot gains",
+          body: `<h3>Two behavior endpoints</h3><p><b>Gmotion</b> supplies acceleration authority. <b>Gss</b> supplies equilibrium stiffness and integral recovery. Soft-radial α continuously blends them.</p><div class="eq">G(α) = αG<sub>motion</sub> + (1−α)G<sub>ss</sub></div><div class="eq">K<sub>p,M</sub> = V<sub>head</sub> /(β<sub>M</sub>ω<sub>B</sub>), &nbsp; K<sub>d,M</sub> = ζ<sub>M</sub>τ<sub>e</sub>K<sub>p,M</sub></div><div class="eq">K<sub>p,S</sub> = (R<sub>s</sub>/k<sub>t</sub>)(ΔT/δω), &nbsp; K<sub>i,S</sub> = K<sub>p,S</sub>/T<sub>i,S</sub></div><p>Edit individual values or use Vector scale to move Kp, Ki and Kd together without changing their ratios.</p>`,
+        },
+        3: {
+          title: "Step 3 · No-load test",
+          body: `<h3>Why no load first?</h3><p>The no-load pass isolates command tracking and the motion-to-equilibrium transition before a disturbance is introduced.</p><p>A step changes the reference immediately. A ramp reaches the same target over the selected ramp time. The trace advances from t = 0 at a 1× timebase: 600 ms of simulated response plays in 600 ms.</p><p>Drag the simulation-time bar to inspect any instant. Playback pauses while dragging and resumes from the selected time when released. After completion, dragging gives stationary inspection; Replay restarts from t = 0.</p><div class="callout">Read the outputs in order: rotor/dq view, speed, α, id/iq, phase currents, then electromagnetic and load torque. α≈1 selects motion behavior; α≈0 selects steady-state behavior.</div>`,
+        },
+        4: {
+          title: "Step 4 · Load disturbance",
+          body: `<h3>Same commissioning, new disturbance</h3><p>The input and gains are kept unchanged. A torque step is applied at the requested time to reveal speed dip, recovery and coordinator activity.</p><div class="eq">T<sub>L,default</sub> = 0.8 T<sub>B</sub></div><p>Choose a time after the speed transition has settled when you want a clean disturbance-rejection test. If the load is applied during the ramp, the result combines tracking and rejection.</p><div class="callout">This model does not enable field weakening. Operation beyond voltage feasibility will show through voltage saturation and tracking error.</div>`,
+        },
+      };
+      $("toGains").onclick = () => {
+        try {
+          readMotor();
+          writeGains();
+          const p = props(activeMotor);
+          $("loadNm").value = fmt(0.8 * p.tb, 4);
+          $("motorSummary").textContent =
+            `${activeMotor.key} · ${activeMotor.name} · ${fmt(toRpm(activeMotor.wb), 0)} rpm`;
+          maxUnlocked = Math.max(maxUnlocked, 2);
+          openStep(2);
+          $("statusText").textContent = "Review first-shot gains";
+        } catch (err) {
+          $("statusText").textContent = err.message;
+        }
+      };
+      $("toInput").onclick = () => {
+        try {
+          readGainVectors();
+          updateGainSummary();
+          maxUnlocked = Math.max(maxUnlocked, 3);
+          openStep(3);
+          $("statusText").textContent = "Configure no-load input";
+        } catch (err) {
+          $("statusText").textContent = err.message;
+        }
+      };
+      $("resetGains").onclick = writeGains;
+      $("gmScale").oninput = updateGainSummary;
+      $("gsScale").oninput = updateGainSummary;
+      $("stepMode").onclick = () => {
+        mode = "step";
+        $("stepMode").classList.add("active");
+        $("rampMode").classList.remove("active");
+        $("rampField").style.opacity = 0.4;
+        $("rampMs").disabled = true;
+      };
+      $("rampMode").onclick = () => {
+        mode = "ramp";
+        $("rampMode").classList.add("active");
+        $("stepMode").classList.remove("active");
+        $("rampField").style.opacity = 1;
+        $("rampMs").disabled = false;
+      };
+      $("runNoLoad").onclick = () => run(false);
+      $("runLoad").onclick = () => run(true);
+      $("keepNoLoad").onclick = () => {
+        openStep(3);
+        $("statusText").textContent = "No-load result retained";
+      };
+      const scrub = $("timeScrubber");
+      function beginScrub() {
+        if (!lastResult || scrub.classList.contains("scrubbing")) return;
+        playback.resumeAfterScrub = playback.playing;
+        playback.playing = false;
+        cancelAnimationFrame(animationId);
+        scrub.classList.add("scrubbing");
+      }
+      function endScrub() {
+        if (!scrub.classList.contains("scrubbing")) return;
+        scrub.classList.remove("scrubbing");
+        if (!lastResult) return;
+        if (playback.q >= 1) completePlayback();
+        else if (playback.resumeAfterScrub) startPlayback();
+        playback.resumeAfterScrub = false;
+      }
+      scrub.addEventListener("pointerdown", beginScrub);
+      scrub.addEventListener("keydown", beginScrub);
+      scrub.addEventListener("input", () => {
+        if (!lastResult) return;
+        if (!scrub.classList.contains("scrubbing")) beginScrub();
+        renderAt(lastResult, Number(scrub.value) / 1000);
+        $("statusText").textContent = "Manual inspection · release to continue";
+      });
+      addEventListener("pointerup", endScrub);
+      scrub.addEventListener("keyup", endScrub);
+      scrub.addEventListener("change", endScrub);
+      $("replay").onclick = () =>
+        lastResult && animate(lastResult, !lastResult.info.withLoad);
+      motorSel.onchange = selectMotor;
+      const tabs = [...document.querySelectorAll(".step-tab")];
+      tabs.forEach((tab) => {
+        tab.onclick = () => openStep(+tab.dataset.tab);
+        tab.onkeydown = (e) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
+            return;
+          e.preventDefault();
+          const available = tabs.filter((x) => !x.disabled),
+            current = available.indexOf(tab);
+          let next =
+            e.key === "Home"
+              ? 0
+              : e.key === "End"
+                ? available.length - 1
+                : clamp(
+                    current + (e.key === "ArrowRight" ? 1 : -1),
+                    0,
+                    available.length - 1,
+                  );
+          available[next].focus();
+          openStep(+available[next].dataset.tab);
+        };
+      });
+      const dialog = $("helpDialog");
+      document.querySelectorAll("[data-help]").forEach(
+        (btn) =>
+          (btn.onclick = () => {
+            const h = helps[btn.dataset.help];
+            $("helpTitle").textContent = h.title;
+            $("helpBody").innerHTML = h.body;
+            dialog.showModal();
+          }),
+      );
+      $("closeHelp").onclick = () => dialog.close();
+      dialog.onclick = (e) => {
+        if (e.target === dialog) dialog.close();
+      };
+      let resizeTimer;
+      addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(
+          () =>
+            lastResult &&
+            renderPlots(lastResult, currentVisible || lastResult.t.length),
+          120,
+        );
+      });
+      selectMotor();
+    </script>
+  </body>
+</html>
