@@ -1,1323 +1,2167 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FOC of PMSM Demo</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>FOC PMSM Commissioning Lab — M1–M19</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+        svg: { fontCache: "global" },
+        options: {
+          skipHtmlTags: [
+            "script",
+            "noscript",
+            "style",
+            "textarea",
+            "pre",
+            "code",
+          ],
+        },
+      };
+    </script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+    ></script>
     <style>
       :root {
-        --bg-color: #f0f2f5;
-        --panel-bg: #ffffff;
-        --border-color: #d9d9d9;
-        --text-color: #333;
-        --primary-color: #007bff;
-        --secondary-color: #6c757d;
-        --danger-color: #dc3545;
-        --success-color: #28a745;
+        --app: #20272e;
+        --bg: #e4e8eb;
+        --panel: #fff;
+        --ink: #17212a;
+        --muted: #56636d;
+        --line: #b7c0c6;
+        --line2: #87949d;
+        --soft: #eef1f3;
+        --blue: #00629b;
+        --blue2: #004b78;
+        --cyan: #008f95;
+        --orange: #d97800;
+        --magenta: #a52052;
+        --green: #23724c;
+        --serif: "Cambria", "Times New Roman", serif;
+        --ui: Arial, "Helvetica Neue", sans-serif;
+        --mono: "Cascadia Mono", Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        font: 16px var(--ui);
+        color: var(--ink);
+        background: var(--bg);
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          "Helvetica Neue", Arial, sans-serif;
-        background-color: var(--bg-color);
-        color: var(--text-color);
         margin: 0;
-        padding: 1rem;
+        background: linear-gradient(
+          90deg,
+          #d7dce0,
+          #edf0f2 18%,
+          #edf0f2 82%,
+          #d7dce0
+        );
+        min-height: 100vh;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      .topbar {
+        height: 64px;
+        background: var(--app);
+        border-bottom: 4px solid var(--blue);
         display: flex;
-        flex-direction: column;
         align-items: center;
+        justify-content: space-between;
+        padding: 0 30px;
+        color: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 20;
       }
-      header {
-        text-align: center;
-        margin-bottom: 1rem;
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 13px;
       }
-      h1 {
+      .mark {
+        width: 39px;
+        height: 39px;
+        border: 1px solid #74838d;
+        background: #151b20;
+        display: grid;
+        place-items: center;
+        font: 800 13px var(--mono);
+      }
+      .brand h1 {
+        font: 600 19px var(--serif);
         margin: 0;
       }
-      h1 + p {
-        margin-top: 0.25rem;
-        color: var(--secondary-color);
+      .brand p {
+        margin: 2px 0 0;
+        color: #aeb8bf;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
       }
-
-      .main-container {
+      .badge {
+        font: 600 13px var(--mono);
+        color: #d2d9dd;
+        border-left: 1px solid #5b6871;
+        padding-left: 18px;
+      }
+      .shell {
+        max-width: 1320px;
+        margin: auto;
+        padding: 21px 24px 60px;
+        background: #eef1f3;
+        min-height: calc(100vh - 64px);
+        border-inline: 1px solid #c5ccd1;
+      }
+      .workspace-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 16px;
+      }
+      .workspace-head h2 {
+        font: 600 27px var(--serif);
+        margin: 0 0 4px;
+      }
+      .workspace-head p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .status {
+        background: #fff;
+        border: 1px solid var(--line2);
+        padding: 9px 12px;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+      .status:before {
+        content: "";
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: var(--green);
+        margin-right: 8px;
+      }
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border: 1px solid #7f8b94;
+        background: #cbd2d7;
+        margin-bottom: 14px;
+        overflow: auto;
+      }
+      .tab {
+        position: relative;
+        min-width: 190px;
+        min-height: 68px;
+        border: 0;
+        border-right: 1px solid #8f9aa2;
+        background: #d9dee2;
+        color: #4b5a65;
+        text-align: left;
+        padding: 11px 15px;
+      }
+      .tab:last-child {
+        border-right: 0;
+      }
+      .tab:hover:not(:disabled) {
+        background: #f5f6f7;
+      }
+      .tab small {
+        display: block;
+        font: 700 12px var(--mono);
+        letter-spacing: 0.08em;
+        color: #66747e;
+        margin-bottom: 3px;
+      }
+      .tab strong {
+        font-size: 15px;
+      }
+      .tab.active {
+        background: #fff;
+        color: #132d40;
+        box-shadow: inset 0 -5px 0 var(--blue);
+      }
+      .tab.complete:not(.active):after {
+        content: "COMPLETE";
+        position: absolute;
+        right: 11px;
+        top: 10px;
+        color: var(--green);
+        font: 700 10px var(--mono);
+      }
+      .tab:disabled {
+        cursor: not-allowed;
+        color: #89949b;
+        background: #d1d7db;
+      }
+      .panel {
+        display: none;
+        background: #fff;
+        border: 1px solid var(--line2);
+      }
+      .panel.active {
+        display: block;
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px 19px;
+        background: #f4f5f6;
+        border-bottom: 1px solid var(--line2);
+      }
+      .code {
+        font: 700 12px var(--mono);
+        color: #fff;
+        background: #2d3b45;
+        border-left: 4px solid var(--blue);
+        padding: 8px 10px;
+      }
+      .panel-copy {
+        flex: 1;
+      }
+      .panel-copy h3 {
+        font: 600 19px var(--serif);
+        margin: 0 0 3px;
+      }
+      .panel-copy p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .help {
+        border: 1px solid var(--line2);
+        background: #fff;
+        color: var(--blue2);
+        padding: 8px 11px;
+        font-weight: 700;
+      }
+      .panel-body {
+        padding: 20px;
+      }
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      .motor-row {
+        grid-template-columns: minmax(280px, 1.2fr) 1fr;
+      }
+      .param-grid {
+        grid-template-columns: repeat(4, 1fr);
+        margin-top: 18px;
+      }
+      .gain-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .input-grid {
+        grid-template-columns: 1.1fr repeat(4, 1fr);
+      }
+      .load-grid {
+        grid-template-columns: 1fr 1fr;
+        max-width: 560px;
+      }
+      .field label {
+        display: block;
+        color: #3e4d58;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 7px;
+      }
+      .field input,
+      .field select {
+        width: 100%;
+        height: 41px;
+        border: 1px solid var(--line2);
+        border-radius: 0;
+        background: #fff;
+        color: var(--ink);
+        padding: 8px 10px;
+        font-size: 15px;
+        outline: none;
+      }
+      .field input:focus,
+      .field select:focus {
+        border-color: var(--blue);
+        box-shadow: inset 0 -3px 0 var(--blue);
+      }
+      .unit {
+        position: relative;
+      }
+      .unit input {
+        padding-right: 72px;
+        font: 14px var(--mono);
+      }
+      .unit span {
+        position: absolute;
+        right: 10px;
+        bottom: 12px;
+        color: #5f6f7a;
+        font: 12px var(--mono);
+      }
+      .note {
+        padding: 10px 12px;
+        background: #e9eef1;
+        border-left: 4px solid #758894;
+        color: #485965;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .formula {
         display: flex;
         flex-wrap: wrap;
-        gap: 1.5rem;
-        width: 100%;
-        max-width: 1600px;
+        border: 1px solid var(--line2);
+        background: #f3f5f6;
+        margin-bottom: 18px;
       }
-
-      .control-panel {
-        flex: 1;
-        min-width: 350px;
-        background: var(--panel-bg);
-        border-radius: 8px;
-        padding: 1.5rem;
-        border: 1px solid var(--border-color);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        align-self: flex-start;
+      .formula code {
+        padding: 10px 13px;
+        border-right: 1px solid var(--line);
+        font: 13px var(--mono);
+        color: #334b5a;
       }
-      .visualization-area {
-        flex: 3;
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-        min-width: 600px;
+      .gain-block {
+        border: 1px solid var(--line2);
+        margin-top: 14px;
       }
-      .plot-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-        gap: 1.5rem;
+      .gain-block h4 {
+        margin: 0;
+        background: #dfe5e8;
+        border-bottom: 2px solid #89969f;
+        padding: 10px 12px;
+        font-size: 13px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
       }
-      .plot-container,
-      .animation-container,
-      .params-container {
-        background: var(--panel-bg);
-        border-radius: 8px;
-        padding: 1.5rem;
-        border: 1px solid var(--border-color);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      .gain-block .grid {
+        padding: 13px;
       }
-      /* Make params container span full width of its flex parent */
-      .params-container {
-        flex-basis: 100%;
-      }
-      .params-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .params-list {
-        list-style: none;
-        padding: 0;
-        margin: 1rem 0 0 0;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-      }
-      .params-list li {
-        display: flex;
-        justify-content: space-between;
-      }
-      .params-list span {
-        font-weight: 600;
-      }
-
-      canvas {
-        width: 100%;
-        height: auto;
-      }
-
-      h2 {
-        margin-top: 0;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 0.5rem;
-        margin-bottom: 1rem;
-      }
-
-      .control-group {
-        margin-bottom: 1.25rem;
-      }
-      label {
-        display: block;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-      }
-      .input-group {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-      input[type="range"] {
-        flex-grow: 1;
-        cursor: pointer;
-      }
-      input[type="number"] {
-        width: 70px;
-        padding: 0.3rem;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-      }
-      .button-group {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-      }
-
-      button {
-        padding: 0.75rem 1.25rem;
-        border: none;
-        border-radius: 5px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background-color 0.2s, transform 0.1s;
-      }
-      button:active {
-        transform: scale(0.98);
-      }
-
-      #start-stop-btn.running {
-        background-color: var(--danger-color);
-        color: white;
-      }
-      #edit-params-btn {
-        background-color: var(--primary-color);
-        color: white;
-      }
-      #start-stop-btn {
-        background-color: var(--success-color);
-        color: white;
-      }
-      #reset-btn,
-      #modal-cancel-btn {
-        background-color: var(--secondary-color);
-        color: white;
-      }
-      #modal-save-btn {
-        background-color: var(--primary-color);
-        color: white;
-      }
-
-      details {
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        padding: 0.5rem;
-        margin-top: 1rem;
-      }
-      summary {
-        cursor: pointer;
-        font-weight: 600;
-      }
-
-      /* Modal Styles */
-      .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-      }
-      .modal-content {
-        background: white;
-        padding: 2rem;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 500px;
-      }
-      .modal-content h2 {
-        margin-top: 0;
-      }
-      .modal-form-grid {
+      .seg {
+        height: 41px;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 1rem;
+        border: 1px solid var(--line2);
       }
-      .modal-buttons {
+      .seg button {
+        border: 0;
+        border-right: 1px solid var(--line2);
+        background: #fff;
+        color: var(--muted);
+      }
+      .seg button:last-child {
+        border-right: 0;
+      }
+      .seg button.active {
+        background: #233746;
+        color: #fff;
+        font-weight: 700;
+        box-shadow: inset 0 -3px 0 var(--blue);
+      }
+      .actions {
         display: flex;
         justify-content: flex-end;
-        gap: 1rem;
-        margin-top: 2rem;
+        gap: 9px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #d9dfe3;
+      }
+      .btn {
+        min-height: 39px;
+        border: 1px solid var(--line2);
+        border-radius: 0;
+        background: #fff;
+        color: #253a49;
+        padding: 9px 16px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .btn:hover {
+        background: var(--soft);
+      }
+      .btn.primary {
+        background: var(--blue);
+        border-color: var(--blue);
+        border-bottom: 3px solid #003d62;
+        color: #fff;
+      }
+      .btn.orange {
+        background: var(--orange);
+        border-color: #a95f00;
+        border-bottom: 3px solid #874c00;
+        color: #fff;
+      }
+      .results {
+        display: none;
+        margin-top: 20px;
+      }
+      .results.visible {
+        display: block;
+      }
+      .runbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: #252e36;
+        border: 1px solid #11181d;
+        padding: 11px 13px;
+        color: #fff;
+      }
+      .timebase {
+        font: 700 11px var(--mono);
+        letter-spacing: 0.07em;
+        color: #aab5bc;
+        border-right: 1px solid #52616b;
+        padding-right: 13px;
+      }
+      .clock {
+        font: 700 14px var(--mono);
+        min-width: 106px;
+      }
+      .progress {
+        height: 7px;
+        background: #3b4851;
+        flex: 1;
+        position: relative;
+      }
+      .progress i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--orange);
+        pointer-events: none;
+      }
+      .progress input {
+        position: absolute;
+        left: 0;
+        top: -8px;
+        width: 100%;
+        height: 23px;
+        margin: 0;
+        appearance: none;
+        -webkit-appearance: none;
+        background: transparent;
+        cursor: ew-resize;
+      }
+      .progress input::-webkit-slider-runnable-track {
+        height: 7px;
+        background: transparent;
+      }
+      .progress input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 15px;
+        height: 19px;
+        margin-top: -6px;
+        border: 2px solid var(--orange);
+        border-radius: 1px;
+        background: #fff;
+        box-shadow: 0 0 0 1px #151b20;
+      }
+      .progress input::-moz-range-track {
+        height: 7px;
+        background: transparent;
+        border: 0;
+      }
+      .progress input::-moz-range-thumb {
+        width: 13px;
+        height: 17px;
+        border: 2px solid var(--orange);
+        border-radius: 1px;
+        background: #fff;
+        box-shadow: 0 0 0 1px #151b20;
+      }
+      .progress input:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 5px;
+      }
+      .progress input.scrubbing::-webkit-slider-thumb {
+        background: var(--orange);
+      }
+      .progress input.scrubbing::-moz-range-thumb {
+        background: var(--orange);
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        border: 1px solid var(--line2);
+        margin-top: 9px;
+      }
+      .metric {
+        background: #fff;
+        border-right: 1px solid var(--line);
+        border-top: 5px solid var(--blue);
+        padding: 14px;
+      }
+      .metric:nth-child(4) {
+        border-top-color: var(--orange);
+      }
+      .metric:nth-child(5) {
+        border-top-color: var(--cyan);
+      }
+      .metric:nth-child(6) {
+        border-top-color: #3a4650;
+      }
+      .metric span {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #4e5d67;
+      }
+      .metric strong {
+        display: inline-block;
+        margin-top: 7px;
+        font: 700 22px var(--mono);
+      }
+      .metric small {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .visual-grid {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 9px;
+        margin-top: 9px;
+      }
+      .motor-card,
+      .chart-card {
+        background: #fff;
+        border: 1px solid var(--line2);
+      }
+      .motor-card {
+        grid-row: span 2;
+      }
+      .card-head {
+        padding: 10px 13px;
+        background: #e6eaed;
+        border-bottom: 1px solid #9ba6ad;
+      }
+      .card-head h3 {
+        font: 600 18px var(--serif);
+        margin: 0;
+      }
+      .motor-wrap {
+        height: 570px;
+        display: grid;
+        place-items: center;
+      }
+      .motor-wrap canvas {
+        width: 100%;
+        height: 100%;
+      }
+      .charts {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .chart-wrap {
+        height: 300px;
+        padding: 8px 12px 5px;
+      }
+      .chart-wrap canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .footer {
+        font: 12px var(--mono);
+        color: #52616b;
+        text-align: right;
+        margin-top: 10px;
+      }
+      dialog {
+        width: min(880px, calc(100vw - 28px));
+        max-height: 88vh;
+        border: 1px solid #81909a;
+        border-radius: 0;
+        padding: 0;
+      }
+      dialog::backdrop {
+        background: rgba(10, 22, 31, 0.48);
+      }
+      .dialog-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--app);
+        border-bottom: 4px solid var(--blue);
+        padding: 14px 17px;
+        color: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+      .dialog-head h2 {
+        font: 600 18px var(--serif);
+        margin: 0;
+      }
+      .close {
+        width: 32px;
+        height: 32px;
+        background: #33434e;
+        border: 1px solid #70808a;
+        color: #fff;
+      }
+      .dialog-body {
+        padding: 21px 24px 26px;
+        font-size: 14px;
+        line-height: 1.62;
+        color: #465762;
+        overflow: auto;
+      }
+      .dialog-body h3 {
+        font: 600 18px var(--serif);
+        color: var(--ink);
+        border-bottom: 1px solid #c6cdd2;
+        padding-bottom: 6px;
+        margin: 23px 0 10px;
+      }
+      .dialog-body h3:first-child {
+        margin-top: 0;
+      }
+      .dialog-body h4 {
+        font: 700 13px var(--ui);
+        letter-spacing: 0.045em;
+        text-transform: uppercase;
+        color: var(--blue2);
+        margin: 18px 0 6px;
+      }
+      .dialog-body p {
+        margin: 7px 0;
+      }
+      .dialog-body ul,
+      .dialog-body ol {
+        padding-left: 22px;
+      }
+      .dialog-body li {
+        margin: 5px 0;
+      }
+      .dialog-body mjx-container[display="true"] {
+        margin: 12px 0 !important;
+        padding: 10px;
+        background: #f5f7f8;
+        border-left: 4px solid var(--blue);
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+      .tech-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 11px 0 15px;
+        font-size: 13px;
+      }
+      .tech-table th,
+      .tech-table td {
+        border: 1px solid #aeb8bf;
+        padding: 7px 9px;
+        text-align: left;
+        vertical-align: top;
+      }
+      .tech-table th {
+        background: #dde4e8;
+        color: #263844;
+      }
+      .tech-table td:first-child {
+        font-family: var(--serif);
+        color: #142d3e;
+        white-space: nowrap;
+      }
+      .assumption {
+        margin: 13px 0;
+        padding: 10px 12px;
+        background: #edf3f6;
+        border-left: 4px solid var(--orange);
+        color: #354a57;
+      }
+      .eq-note {
+        font: 12px var(--mono);
+        color: #5d6971;
+        margin-top: -5px !important;
+      }
+      @media (max-width: 1000px) {
+        .param-grid,
+        .gain-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .input-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .metrics {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .visual-grid {
+          grid-template-columns: 1fr;
+        }
+        .motor-card {
+          grid-row: auto;
+        }
+        .motor-wrap {
+          height: 330px;
+        }
+      }
+      @media (max-width: 620px) {
+        .topbar {
+          padding: 0 12px;
+        }
+        .badge,
+        .brand p {
+          display: none;
+        }
+        .shell {
+          padding: 15px 8px 40px;
+        }
+        .workspace-head {
+          display: block;
+        }
+        .status {
+          margin-top: 10px;
+        }
+        .tabs {
+          display: flex;
+        }
+        .tab {
+          min-width: 180px;
+        }
+        .motor-row,
+        .param-grid,
+        .gain-grid,
+        .input-grid,
+        .load-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        .metrics {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .timebase {
+          display: none;
+        }
+        .chart-wrap {
+          height: 250px;
+        }
       }
     </style>
   </head>
   <body>
-    <header>
-      <h1>FOC of PMSM Demo</h1>
-      <p>
-        A web-based tool to visualize Field-Oriented Control of a Permanent
-        Magnet Synchronous Motor.
-      </p>
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">FOC</div>
+        <div>
+          <h1>PMSM FOC Commissioning Lab</h1>
+          <p>Cascaded speed and current control</p>
+        </div>
+      </div>
+      <div class="badge">MOTOR LIBRARY M1–M19 &nbsp;|&nbsp; Ts 50 µs</div>
     </header>
-
-    <div class="main-container">
-      <div class="params-container">
-        <div class="params-header">
-          <h2>Motor Parameters</h2>
-          <button id="edit-params-btn">Edit Parameters</button>
+    <main class="shell">
+      <section class="workspace-head">
+        <div>
+          <h2>FOC drive experiment</h2>
+          <p>
+            Select the plant, commission the PI loops, then validate no-load and
+            loaded responses.
+          </p>
         </div>
-        <ul class="params-list" id="params-display-list"></ul>
-      </div>
-
-      <div class="control-panel">
-        <h2>Controls</h2>
-        <div class="button-group">
-          <button id="start-stop-btn">Start</button>
-          <button id="reset-btn">Reset</button>
+        <div class="status">
+          System status&nbsp; <b id="statusText">Verify motor parameters</b>
         </div>
-
-        <div class="control-group">
-          <label for="speed-ref-slider">Speed Reference (RPM)</label>
-          <div class="input-group">
-            <input
-              type="range"
-              id="speed-ref-slider"
-              min="-1500"
-              max="1500"
-              value="0"
-              step="10"
-            />
-            <input
-              type="number"
-              id="speed-ref-input"
-              min="-1500"
-              max="1500"
-              value="0"
-            />
+      </section>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="1">
+          <small>MODULE 01</small><strong>Motor configuration</strong></button
+        ><button class="tab" data-tab="2" disabled>
+          <small>MODULE 02</small
+          ><strong>FOC gain commissioning</strong></button
+        ><button class="tab" data-tab="3" disabled>
+          <small>MODULE 03</small><strong>No-load validation</strong></button
+        ><button class="tab" data-tab="4" disabled>
+          <small>MODULE 04</small><strong>Load disturbance</strong>
+        </button>
+      </nav>
+      <section class="panel active" data-panel="1">
+        <header class="panel-head">
+          <span class="code">MTR DATA</span>
+          <div class="panel-copy">
+            <h3>Select motor and verify parameters</h3>
+            <p id="motorSummary">M1 · Original 1.5-kW PMSM</p>
+          </div>
+          <button class="help" data-help="1">Technical help</button>
+        </header>
+        <div class="panel-body">
+          <div class="grid motor-row">
+            <div class="field">
+              <label for="motorSelect">Motor parameter set</label
+              ><select id="motorSelect"></select>
+            </div>
+            <div class="note" id="motorNote"></div>
+          </div>
+          <div class="grid param-grid" id="parameterGrid"></div>
+          <div class="actions">
+            <button class="btn primary" id="acceptMotor">
+              Use these parameters
+            </button>
           </div>
         </div>
-
-        <div class="control-group">
-          <label for="load-torque-slider">Load Torque (Nm)</label>
-          <div class="input-group">
-            <input
+      </section>
+      <section class="panel" data-panel="2">
+        <header class="panel-head">
+          <span class="code">PI TUNE</span>
+          <div class="panel-copy">
+            <h3>Calculate cascaded FOC gains</h3>
+            <p id="gainSummary">Waiting for motor parameters</p>
+          </div>
+          <button class="help" data-help="2">Technical help</button>
+        </header>
+        <div class="panel-body">
+          <div class="formula" id="derivedStrip"></div>
+          <div class="grid gain-grid">
+            <div class="field">
+              <label for="currentBw">Current-loop bandwidth</label>
+              <div class="unit">
+                <input
+                  id="currentBw"
+                  type="number"
+                  min="50"
+                  step="50"
+                  value="1000"
+                /><span>Hz</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="speedBw">Speed-loop natural frequency</label>
+              <div class="unit">
+                <input
+                  id="speedBw"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="20"
+                /><span>Hz</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="speedZeta">Speed damping ratio</label
+              ><input
+                id="speedZeta"
+                type="number"
+                min="0.4"
+                step="0.05"
+                value="1"
+              />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label
+              ><button class="btn" id="calculateGains">
+                Recalculate gains
+              </button>
+            </div>
+          </div>
+          <div class="gain-block">
+            <h4>Speed PI · output iq reference</h4>
+            <div class="grid gain-grid">
+              <div class="field">
+                <label for="speedKp">Kpω</label
+                ><input id="speedKp" type="number" step="any" />
+              </div>
+              <div class="field">
+                <label for="speedKi">Kiω</label
+                ><input id="speedKi" type="number" step="any" />
+              </div>
+            </div>
+          </div>
+          <div class="gain-block">
+            <h4>d–q current PI · output voltage</h4>
+            <div class="grid gain-grid">
+              <div class="field">
+                <label for="idKp">Kpd</label
+                ><input id="idKp" type="number" step="any" />
+              </div>
+              <div class="field">
+                <label for="idKi">Kid</label
+                ><input id="idKi" type="number" step="any" />
+              </div>
+              <div class="field">
+                <label for="iqKp">Kpq</label
+                ><input id="iqKp" type="number" step="any" />
+              </div>
+              <div class="field">
+                <label for="iqKi">Kiq</label
+                ><input id="iqKi" type="number" step="any" />
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="acceptGains">Accept gains</button>
+          </div>
+        </div>
+      </section>
+      <section class="panel" data-panel="3">
+        <header class="panel-head">
+          <span class="code">NL TEST</span>
+          <div class="panel-copy">
+            <h3>Select command and run no-load response</h3>
+            <p id="inputSummary">Ramp to motor base speed</p>
+          </div>
+          <button class="help" data-help="3">Technical help</button>
+        </header>
+        <div class="panel-body">
+          <div class="grid input-grid">
+            <div class="field">
+              <label>Input type</label>
+              <div class="seg">
+                <button id="stepMode">Step</button
+                ><button id="rampMode" class="active">Ramp</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="targetRpm">Target speed</label>
+              <div class="unit">
+                <input id="targetRpm" type="number" step="10" /><span>rpm</span>
+              </div>
+            </div>
+            <div class="field" id="rampField">
+              <label for="rampMs">Ramp time</label>
+              <div class="unit">
+                <input
+                  id="rampMs"
+                  type="number"
+                  min="0.1"
+                  step="1"
+                  value="100"
+                /><span>ms</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="startMs">Command starts</label>
+              <div class="unit">
+                <input
+                  id="startMs"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="20"
+                /><span>ms</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="durationMs">Experiment duration</label>
+              <div class="unit">
+                <input
+                  id="durationMs"
+                  type="number"
+                  min="100"
+                  max="5000"
+                  step="50"
+                  value="600"
+                /><span>ms</span>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="runNoLoad">
+              Run no-load response
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="panel" data-panel="4">
+        <header class="panel-head">
+          <span class="code">LD TEST</span>
+          <div class="panel-copy">
+            <h3>Apply a load disturbance</h3>
+            <p id="loadSummary">Default load is 80% of motor base torque</p>
+          </div>
+          <button class="help" data-help="4">Technical help</button>
+        </header>
+        <div class="panel-body">
+          <div
+            class="note"
+            style="border-left-color: var(--orange); margin-bottom: 16px"
+          >
+            The command and commissioned PI gains are unchanged. Only the
+            mechanical load step is added.
+          </div>
+          <div class="grid load-grid">
+            <div class="field">
+              <label for="loadNm">Load torque</label>
+              <div class="unit">
+                <input id="loadNm" type="number" step="0.01" /><span>N·m</span>
+              </div>
+            </div>
+            <div class="field">
+              <label for="loadAtMs">Apply load at</label>
+              <div class="unit">
+                <input
+                  id="loadAtMs"
+                  type="number"
+                  min="0"
+                  step="10"
+                  value="350"
+                /><span>ms</span>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn" id="backNoLoad">Return to no-load setup</button
+            ><button class="btn orange" id="runLoad">Run with load</button>
+          </div>
+        </div>
+      </section>
+      <section class="results" id="results">
+        <div class="runbar">
+          <span class="timebase">SIMULATION TIME · 1×</span
+          ><strong class="clock" id="clock">t = 0.0 ms</strong>
+          <div class="progress" title="Drag to inspect simulation time">
+            <i id="progressFill"></i
+            ><input
+              id="timeScrubber"
               type="range"
-              id="load-torque-slider"
               min="0"
-              max="5"
+              max="1000"
               value="0"
-              step="0.1"
-            />
-            <input
-              type="number"
-              id="load-torque-input"
-              min="0"
-              max="5"
-              value="0"
-            />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label for="dc-voltage-slider">DC Bus Voltage (V)</label>
-          <div class="input-group">
-            <input
-              type="range"
-              id="dc-voltage-slider"
-              min="12"
-              max="800"
-              value="48"
-              step="2"
-            />
-            <input
-              type="number"
-              id="dc-voltage-input"
-              min="12"
-              max="800"
-              value="48"
-            />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label for="current-limit-slider">Current Limit (A)</label>
-          <div class="input-group">
-            <input
-              type="range"
-              id="current-limit-slider"
-              min="1"
-              max="50"
-              value="15"
               step="1"
-            />
-            <input
-              type="number"
-              id="current-limit-input"
-              min="1"
-              max="50"
-              value="15"
+              aria-label="Simulation time"
             />
           </div>
+          <button class="btn" id="replay">Replay</button>
         </div>
-
-        <details>
-          <summary>PI Controller Gains</summary>
-          <div class="control-group">
-            <label for="speed-kp-slider">Speed Kp</label>
-            <div class="input-group">
-              <input
-                type="range"
-                id="speed-kp-slider"
-                min="0"
-                max="100"
-                value="5"
-                step="0.1"
-              />
-              <input
-                type="number"
-                id="speed-kp-input"
-                min="0"
-                max="100"
-                value="5"
-              />
-            </div>
+        <div class="metrics">
+          <div class="metric">
+            <span>Rise 10–90%</span><strong id="mRise">—</strong>
+            <small>ms</small>
           </div>
-          <div class="control-group">
-            <label for="speed-ki-slider">Speed Ki</label>
-            <div class="input-group">
-              <input
-                type="range"
-                id="speed-ki-slider"
-                min="0"
-                max="1000"
-                value="10"
-                step="0.1"
-              />
-              <input
-                type="number"
-                id="speed-ki-input"
-                min="0"
-                max="1000"
-                value="10"
-              />
-            </div>
+          <div class="metric">
+            <span>Settling ±2%</span><strong id="mSettle">—</strong>
+            <small>ms</small>
           </div>
-          <div class="control-group">
-            <label for="iq-kp-slider">Iq Kp</label>
-            <div class="input-group">
-              <input
-                type="range"
-                id="iq-kp-slider"
-                min="0"
-                max="100"
-                value="10"
-                step="0.1"
-              />
-              <input
-                type="number"
-                id="iq-kp-input"
-                min="0"
-                max="100"
-                value="10"
-              />
-            </div>
+          <div class="metric">
+            <span>Overshoot</span><strong id="mOver">—</strong> <small>%</small>
           </div>
-          <div class="control-group">
-            <label for="iq-ki-slider">Iq Ki</label>
-            <div class="input-group">
-              <input
-                type="range"
-                id="iq-ki-slider"
-                min="0"
-                max="1000"
-                value="200"
-                step="0.1"
-              />
-              <input
-                type="number"
-                id="iq-ki-input"
-                min="0"
-                max="1000"
-                value="200"
-              />
-            </div>
+          <div class="metric">
+            <span>Peak |iq|</span><strong id="mIq">—</strong>
+            <small id="mIqUnit">A</small>
           </div>
-        </details>
-      </div>
-
-      <div class="visualization-area">
-        <div class="animation-container">
-          <canvas id="motor-animation-canvas"></canvas>
-        </div>
-        <div class="plot-grid">
-          <div class="plot-container">
-            <canvas id="currents-plot"></canvas>
+          <div class="metric">
+            <span>Peak voltage</span><strong id="mVolt">—</strong>
+            <small>pu</small>
           </div>
-          <div class="plot-container">
-            <canvas id="dq-plot"></canvas>
-          </div>
-          <div class="plot-container">
-            <canvas id="speed-plot"></canvas>
-          </div>
-          <div class="plot-container">
-            <canvas id="torque-plot"></canvas>
+          <div class="metric">
+            <span>Final error</span><strong id="mErr">—</strong>
+            <small>%</small>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Modal for Editing Parameters -->
-    <div class="modal-overlay" id="params-modal">
-      <div class="modal-content">
-        <h2>Edit Motor Parameters</h2>
-        <form id="params-form">
-          <div class="modal-form-grid">
-            <div class="control-group">
-              <label for="modal-p">Pole Pairs (P)</label>
-              <input type="number" id="modal-p" step="1" />
-            </div>
-            <div class="control-group">
-              <label for="modal-rs">Resistance (Rs) Ω</label>
-              <input type="number" id="modal-rs" step="0.01" />
-            </div>
-            <div class="control-group">
-              <label for="modal-ld">d-Inductance (Ld) H</label>
-              <input type="number" id="modal-ld" step="0.0001" />
-            </div>
-            <div class="control-group">
-              <label for="modal-lq">q-Inductance (Lq) H</label>
-              <input type="number" id="modal-lq" step="0.0001" />
-            </div>
-            <div class="control-group">
-              <label for="modal-lambda">Flux Linkage (λm) Wb</label>
-              <input type="number" id="modal-lambda" step="0.01" />
-            </div>
-            <div class="control-group">
-              <label for="modal-j">Inertia (J) kg·m²</label>
-              <input type="number" id="modal-j" step="0.001" />
-            </div>
+        <div class="visual-grid">
+          <article class="motor-card">
+            <div class="card-head"><h3>Rotor and dq quantities</h3></div>
+            <div class="motor-wrap"><canvas id="motorCanvas"></canvas></div>
+          </article>
+          <div class="charts">
+            <article class="chart-card">
+              <div class="card-head"><h3>Speed response</h3></div>
+              <div class="chart-wrap"><canvas id="speedChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="card-head"><h3>d–q currents</h3></div>
+              <div class="chart-wrap"><canvas id="dqChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="card-head"><h3>Phase currents</h3></div>
+              <div class="chart-wrap"><canvas id="phaseChart"></canvas></div>
+            </article>
+            <article class="chart-card">
+              <div class="card-head">
+                <h3>Electromagnetic and load torque</h3>
+              </div>
+              <div class="chart-wrap"><canvas id="torqueChart"></canvas></div>
+            </article>
           </div>
-          <div class="modal-buttons">
-            <button type="button" id="modal-cancel-btn">Cancel</button>
-            <button type="submit" id="modal-save-btn">Save and Reset</button>
-          </div>
-        </form>
+        </div>
+        <div class="footer" id="sampleNote">
+          Cascaded FOC · RK4 averaged dq plant · no field weakening
+        </div>
+      </section>
+    </main>
+    <dialog id="helpDialog">
+      <div class="dialog-head">
+        <h2 id="helpTitle"></h2>
+        <button class="close" id="closeHelp">×</button>
       </div>
-    </div>
-
+      <div class="dialog-body" id="helpBody"></div>
+    </dialog>
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        // --- DOM Elements ---
-        const startStopBtn = document.getElementById("start-stop-btn");
-        const resetBtn = document.getElementById("reset-btn");
-        const editParamsBtn = document.getElementById("edit-params-btn");
-        const paramsModal = document.getElementById("params-modal");
-        const paramsForm = document.getElementById("params-form");
-        const modalCancelBtn = document.getElementById("modal-cancel-btn");
-        const paramsDisplayList = document.getElementById(
-          "params-display-list"
-        );
-
-        const uiControls = {
-          speedRef: {
-            slider: document.getElementById("speed-ref-slider"),
-            input: document.getElementById("speed-ref-input"),
+        const PI = Math.PI,
+          SQRT3 = Math.sqrt(3),
+          DT = 50e-6,
+          $ = (id) => document.getElementById(id),
+          clamp = (x, a, b) => Math.min(b, Math.max(a, x)),
+          rpm = (x) => (x * 2 * PI) / 60,
+          toRpm = (x) => (x * 60) / (2 * PI),
+          fmt = (x, d = 4) => {
+            if (!Number.isFinite(x)) return "—";
+            const a = Math.abs(x);
+            return a && (a < 1e-3 || a >= 1e5)
+              ? x.toExponential(3)
+              : x.toFixed(d).replace(/0+$/, "").replace(/\.$/, "");
+          };
+        const motors = [
+          {
+            key: "M1",
+            name: "Original 1.5-kW PMSM",
+            vdc: 320,
+            tb: 4.8,
+            J: 8.7e-4,
+            rs: 4.5,
+            ld: 27e-3,
+            lq: 27e-3,
+            psi: 0.3898,
+            p: 2,
+            B: 1e-4,
+            imax: 8.21,
+            wb: 150,
+            note: "Original GVM-PID motor.",
           },
-          loadTorque: {
-            slider: document.getElementById("load-torque-slider"),
-            input: document.getElementById("load-torque-input"),
+          {
+            key: "M2",
+            name: "Xu 2025 / Different PMSM",
+            vdc: 380,
+            tb: null,
+            J: 2.8e-2,
+            rs: 0.12,
+            ld: 6.5e-3,
+            lq: 6.5e-3,
+            psi: 0.18542,
+            p: 4,
+            B: 4.8e-3,
+            imax: 25,
+            wb: rpm(500),
+            note: "Xu 2025 SPMSM; torque base reconstructed by the common convention.",
           },
-          dcVoltage: {
-            slider: document.getElementById("dc-voltage-slider"),
-            input: document.getElementById("dc-voltage-input"),
+          {
+            key: "M3",
+            name: "Third PMSM (no-retune test)",
+            vdc: 96,
+            tb: 2.4,
+            J: 1.8e-3,
+            rs: 0.65,
+            ld: 2.8e-3,
+            lq: 3.2e-3,
+            psi: 0.085,
+            p: 4,
+            B: 3e-4,
+            imax: 9.4118,
+            wb: 120,
+            note: "Motor C in the cross-motor commissioning study.",
           },
-          currentLimit: {
-            slider: document.getElementById("current-limit-slider"),
-            input: document.getElementById("current-limit-input"),
+          {
+            key: "M4",
+            name: "Paper PMSM",
+            vdc: 311,
+            tb: null,
+            J: 1.419e-3,
+            rs: 0.8,
+            ld: 5e-3,
+            lq: 5e-3,
+            psi: 0.09,
+            p: 4,
+            B: 2e-4,
+            imax: 13,
+            wb: rpm(1000),
+            note: "Motor D in the cross-motor commissioning study.",
           },
-          speedKp: {
-            slider: document.getElementById("speed-kp-slider"),
-            input: document.getElementById("speed-kp-input"),
+          {
+            key: "M5",
+            name: "Uploaded paper PMSM",
+            vdc: 1200,
+            tb: null,
+            J: 1.469e-2,
+            rs: 0.4578,
+            ld: 1.34e-3,
+            lq: 1.34e-3,
+            psi: 0.171,
+            p: 4,
+            B: 3.035e-4,
+            imax: 100,
+            wb: rpm(3000),
+            note: "Motor parameters from the uploaded source table.",
           },
-          speedKi: {
-            slider: document.getElementById("speed-ki-slider"),
-            input: document.getElementById("speed-ki-input"),
+          {
+            key: "M6",
+            name: "1.25-kW paper PMSM",
+            vdc: 310,
+            tb: 5,
+            J: 4.6e-4,
+            rs: 3.18,
+            ld: 8.5e-3,
+            lq: 8.5e-3,
+            psi: 0.325,
+            p: 2,
+            B: 0,
+            imax: 25,
+            wb: rpm(2000),
+            note: "L interpreted as 8.5 mH, consistent with the reported time constant.",
           },
-          iqKp: {
-            slider: document.getElementById("iq-kp-slider"),
-            input: document.getElementById("iq-kp-input"),
+          {
+            key: "M7",
+            name: "Lin–Chen YBL13S-115LZ",
+            vdc: 400,
+            tb: null,
+            J: 5e-3,
+            rs: 0.2648,
+            ld: 1.9e-3,
+            lq: 1.9e-3,
+            psi: 0.2382,
+            p: 4,
+            B: 4.4e-3,
+            imax: 15,
+            wb: rpm(800),
+            note: "15-A limit inferred from the reported 12.9-A peak.",
           },
-          iqKi: {
-            slider: document.getElementById("iq-ki-slider"),
-            input: document.getElementById("iq-ki-input"),
+          {
+            key: "M8",
+            name: "Wang 200-W single-loop PMSM",
+            vdc: 36,
+            tb: 0.6525,
+            J: 1.89e-5,
+            rs: 0.33,
+            ld: 0.9e-3,
+            lq: 0.9e-3,
+            psi: 0.0145,
+            p: 4,
+            B: 0,
+            imax: 22.5,
+            wb: rpm(3000),
+            note: "Imax is 3× rated current following the paper design guideline.",
           },
-        };
-
-        const modalInputs = {
-          P: document.getElementById("modal-p"),
-          Rs: document.getElementById("modal-rs"),
-          Ld: document.getElementById("modal-ld"),
-          Lq: document.getElementById("modal-lq"),
-          lambda_m: document.getElementById("modal-lambda"),
-          J: document.getElementById("modal-j"),
-        };
-
-        // --- Constants ---
-        const PI = Math.PI;
-        const SQRT3 = Math.sqrt(3);
-        const PLOT_POINTS = 500;
-        const DT = 0.00005; //50us time step
-        const ANIMATION_SPEED_SCALE = 0.1; // Display speed is 10% of real speed
-
-        // --- Simulation State ---
-        let isRunning = false;
-        let animationFrameId;
-        let resizeTimer;
-
-        // --- Motor & Control Parameters ---
-        let params = {};
-        function setDefaultParams() {
-          params = {
-            P: 4,
-            Rs: 0.5,
-            Ld: 0.001,
-            Lq: 0.0015,
-            lambda_m: 0.1,
-            J: 0.005,
+          {
+            key: "M9",
+            name: "Hua bearingless IPMSM",
+            vdc: 180,
+            tb: null,
+            J: 0.0010082,
+            rs: 2.316,
+            ld: 13.42e-3,
+            lq: 24.51e-3,
+            psi: 0.165,
+            p: 2,
+            B: 0,
+            imax: 8,
+            wb: rpm(3000),
+            note: "J is estimated from rotor mass and radius; B is unreported.",
+          },
+          {
+            key: "M10",
+            name: "Khan–Rahman 1-hp IPMSM",
+            vdc: 294.1564209736,
+            tb: 3.9554612937,
+            J: 0.003,
+            rs: 1.93,
+            ld: 42.44e-3,
+            lq: 79.57e-3,
+            psi: 0.311,
+            p: 2,
             B: 0.001,
-            speed_ref_rpm: 0,
-            load_torque: 0,
-            dc_voltage: 48,
-            current_limit: 15,
-            speed_kp: 0.5,
-            speed_ki: 10,
-            id_kp: 10,
-            id_ki: 200,
-            iq_kp: 10,
-            iq_ki: 200,
-            time: 0,
-            theta_mech: 0,
-            speed_rad_s: 0,
-            id: 0,
-            iq: 0,
-            animation_theta_mech: 0,
-            animation_theta_elec: 0,
-            theta_elec: 0,
-            speed_rpm: 0,
-            id_ref: 0,
-            iq_ref: 0,
-            vd: 0,
-            vq: 0,
-            torque_elec: 0,
-            speed_integrator: 0,
-            id_integrator: 0,
-            iq_integrator: 0,
+            imax: 3,
+            wb: 188.6,
+            note: "Vdc=√2·208 V derived from rated line-line RMS voltage.",
+          },
+          {
+            key: "M11",
+            name: "Teymoori 5-MW propulsion PMSM",
+            vdc: 4666.9047558,
+            tb: 159154.9430919,
+            J: 500,
+            rs: 0.066,
+            ld: 2.5e-3,
+            lq: 2.5e-3,
+            psi: 4,
+            p: 11,
+            B: 50.6605918212,
+            imax: 3617.1577975,
+            wb: rpm(300),
+            note: "J, B, current limit and dc link are documented proxies.",
+          },
+          {
+            key: "M12",
+            name: "Liu 2024 CCS-PSC SPMSM",
+            vdc: 570,
+            tb: 14,
+            J: 7.78e-3,
+            rs: 0.95,
+            ld: 9.8e-3,
+            lq: 9.8e-3,
+            psi: 0.225,
+            p: 3,
+            B: 0,
+            imax: 10,
+            wb: rpm(2700),
+            note: "380-V rating mapped to a 570-V dc-link proxy; B unreported.",
+          },
+          {
+            key: "M13",
+            name: "Fan 2024 inverse-optimal PMSM",
+            vdc: 60,
+            tb: null,
+            J: 7.06e-4,
+            rs: 0.72,
+            ld: 0.4e-3,
+            lq: 0.4e-3,
+            psi: 0.0192,
+            p: 4,
+            B: 3.5e-4,
+            imax: 12,
+            wb: rpm(800),
+            note: "60-V and 12-A paper ratings; torque base reconstructed.",
+          },
+          {
+            key: "M14",
+            name: "Li 2025 VRSTM-HODOB PMSM",
+            vdc: 120,
+            tb: null,
+            J: 2.77e-4,
+            rs: 1.55,
+            ld: 6.71e-3,
+            lq: 6.71e-3,
+            psi: 0.047,
+            p: 10,
+            B: 5.23e-4,
+            imax: 10,
+            wb: rpm(1200),
+            note: "Vdc and Imax are documented assumptions from figure limits.",
+          },
+          {
+            key: "M15",
+            name: "Preindl–Bolognani MP-DSC IPMSM",
+            vdc: 200,
+            tb: 7.8,
+            J: 1e-3,
+            rs: 0.636,
+            ld: 12e-3,
+            lq: 20e-3,
+            psi: 0.088,
+            p: 5,
+            B: 1.7e-3,
+            imax: 10,
+            wb: rpm(1200),
+            note: "1200-rpm operating point is the reported no-field-weakening limit.",
+          },
+          {
+            key: "M16",
+            name: "Kong 2024 DFTSMPC SPMSM",
+            vdc: 50,
+            tb: null,
+            J: 4.4109e-5,
+            rs: 0.3,
+            ld: 0.46e-3,
+            lq: 0.46e-3,
+            psi: 0.0371,
+            p: 2,
+            B: 0,
+            imax: 10,
+            wb: rpm(1000),
+            note: "10-A limit inferred from published current axes; B unreported.",
+          },
+          {
+            key: "M17",
+            name: "Wang 2025 constrained single-loop PMSM",
+            vdc: 48,
+            tb: 0.273,
+            J: 7.06e-4,
+            rs: 0.76,
+            ld: 0.4e-3,
+            lq: 0.4e-3,
+            psi: 0.0192,
+            p: 4,
+            B: 3.5e-4,
+            imax: 10,
+            wb: rpm(1000),
+            note: "Uses the paper’s explicit 10-A simulation constraint.",
+          },
+          {
+            key: "M18",
+            name: "Liang 2026 Tube-PPC PMSM",
+            vdc: 300,
+            tb: 4,
+            J: 8.5e-4,
+            rs: 2.76,
+            ld: 6.42e-3,
+            lq: 6.42e-3,
+            psi: 0.1667,
+            p: 4,
+            B: 0,
+            imax: 10,
+            wb: rpm(1500),
+            note: "Imax inferred from current axes; B unreported.",
+          },
+          {
+            key: "M19",
+            name: "Li–Zhou–Yu terminal-SMC PMSM",
+            vdc: 901.2261177,
+            tb: 2.3873241464,
+            J: 1.78e-4,
+            rs: 1.74,
+            ld: 4e-3,
+            lq: 4e-3,
+            psi: 0.402,
+            p: 4,
+            B: 7.403e-5,
+            imax: 10,
+            wb: rpm(3000),
+            note: "Vdc is a documented feasibility proxy for the printed 0.402-Wb flux.",
+          },
+        ];
+        const sel = $("motorSelect");
+        motors.forEach((m, i) =>
+          sel.add(new Option(`${m.key} · ${m.name}`, i)),
+        );
+        const defs = [
+          ["vdc", "DC link", "V", 1],
+          ["rs", "Stator resistance", "Ω", 1],
+          ["ld", "Ld", "mH", 1000],
+          ["lq", "Lq", "mH", 1000],
+          ["psi", "PM flux", "Wb", 1],
+          ["p", "Pole pairs", "", 1],
+          ["J", "Inertia", "kg·m²", 1],
+          ["B", "Viscous friction", "N·m·s/rad", 1],
+          ["imax", "Current limit", "A", 1],
+          ["wb", "Base speed", "rpm", "rpm"],
+          ["tb", "Base torque", "N·m", 1],
+        ];
+        let motor = null,
+          mode = "ramp",
+          maxTab = 1,
+          last = null,
+          raf = 0,
+          charts = {},
+          playback = {
+            tr: null,
+            q: 0,
+            dur: 0,
+            playing: false,
+            resumeAfterScrub: false,
+            unlock: false,
+            completed: false,
           };
-        }
-
-        // --- Plotting ---
-        let charts = {};
-        const plotData = {
-          time: [],
-          ia: [],
-          ib: [],
-          ic: [],
-          id: [],
-          iq: [],
-          speed_ref: [],
-          speed_actual: [],
-          torque_ref: [],
-          torque_actual: [],
+        const props = (m) => {
+          const kt = 1.5 * m.p * m.psi;
+          return {
+            kt,
+            tb: m.tb ?? 0.5 * kt * m.imax,
+            vmax: m.vdc / SQRT3,
+            tauD: m.ld / m.rs,
+            tauQ: m.lq / m.rs,
+          };
         };
-
-        function initPlots() {
-          const plotOptions = (title) => ({
-            responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 1.5,
-            plugins: {
-              title: { display: true, text: title, font: { size: 16 } },
-              legend: { position: "top", labels: { usePointStyle: true } },
-            },
-            scales: {
-              x: { type: "linear", title: { display: true, text: "Time (s)" } },
-              y: { title: { display: true } },
-            },
-            elements: { point: { radius: 0 } },
-            animation: { duration: 0 },
-          });
-          Object.values(charts).forEach((chart) => chart.destroy());
-
-          const currentScaleMax = params.current_limit * 1.2;
-          const targetRange = Math.abs(params.speed_ref_rpm);
-          const speedScaleMax = Math.max(300, targetRange * 1.5);
-
-          charts.currents = new Chart("currents-plot", {
-            type: "line",
-            data: {
-              labels: plotData.time,
-              datasets: [
-                {
-                  label: "ia",
-                  data: plotData.ia,
-                  borderColor: "#FF0000",
-                  fill: false,
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-                {
-                  label: "ib",
-                  data: plotData.ib,
-                  borderColor: "#00FF00",
-                  fill: false,
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-                {
-                  label: "ic",
-                  data: plotData.ic,
-                  borderColor: "#0000FF",
-                  fill: false,
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-              ],
-            },
-            options: {
-              ...plotOptions("Phase Currents (A)"),
-              scales: {
-                ...plotOptions().scales,
-                y: {
-                  ...plotOptions().scales.y,
-                  max: currentScaleMax,
-                  min: -currentScaleMax,
-                },
-              },
-            },
-          });
-          charts.dq = new Chart("dq-plot", {
-            type: "line",
-            data: {
-              labels: plotData.time,
-              datasets: [
-                {
-                  label: "id",
-                  data: plotData.id,
-                  borderColor: "#FF0000",
-                  fill: false,
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-                {
-                  label: "iq",
-                  data: plotData.iq,
-                  borderColor: "#0000FF",
-                  fill: false,
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-              ],
-            },
-            options: {
-              ...plotOptions("d-q Currents (A)"),
-              scales: {
-                ...plotOptions().scales,
-                y: {
-                  ...plotOptions().scales.y,
-                  max: currentScaleMax,
-                  min: -currentScaleMax,
-                },
-              },
-            },
-          });
-          charts.speed = new Chart("speed-plot", {
-            type: "line",
-            data: {
-              labels: plotData.time,
-              datasets: [
-                {
-                  label: "Reference",
-                  data: plotData.speed_ref,
-                  borderColor: "#FFA500",
-                  fill: false,
-                  borderDash: [5, 5],
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-                {
-                  label: "Actual",
-                  data: plotData.speed_actual,
-                  borderColor: "#1E90FF",
-                  fill: false,
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-              ],
-            },
-            options: {
-              ...plotOptions("Motor Speed (RPM)"),
-              scales: {
-                ...plotOptions().scales,
-                y: {
-                  ...plotOptions().scales.y,
-                  max: speedScaleMax,
-                  min: -speedScaleMax,
-                },
-              },
-            },
-          });
-          charts.torque = new Chart("torque-plot", {
-            type: "line",
-            data: {
-              labels: plotData.time,
-              datasets: [
-                {
-                  label: "Load",
-                  data: plotData.torque_ref,
-                  borderColor: "#8A2BE2",
-                  fill: false,
-                  borderDash: [5, 5],
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-                {
-                  label: "Electromagnetic",
-                  data: plotData.torque_actual,
-                  borderColor: "#32CD32",
-                  fill: false,
-                  borderWidth: 2,
-                  pointStyle: "line",
-                },
-              ],
-            },
-            options: {
-              ...plotOptions("Torque (Nm)"),
-              scales: {
-                ...plotOptions().scales,
-                y: {
-                  ...plotOptions().scales.y,
-                  suggestedMax: 5,
-                  suggestedMin: -5,
-                },
-              },
-            },
-          });
+        function renderFields() {
+          const p = props(motor);
+          $("parameterGrid").innerHTML = defs
+            .map(([k, l, u, m]) => {
+              let v = k === "tb" ? p.tb : motor[k];
+              v = m === "rpm" ? toRpm(v) : v * m;
+              return `<div class="field"><label>${l}</label><div class="unit"><input id="m_${k}" type="number" step="any" value="${v}"><span>${u}</span></div></div>`;
+            })
+            .join("");
         }
-
-        function updatePlotScales() {
-          if (charts.currents && charts.dq) {
-            const currentScaleMax = params.current_limit * 1.2 || 10;
-            charts.currents.options.scales.y.max = currentScaleMax;
-            charts.currents.options.scales.y.min = -currentScaleMax;
-            charts.dq.options.scales.y.max = currentScaleMax;
-            charts.dq.options.scales.y.min = -currentScaleMax;
-            charts.currents.update("none");
-            charts.dq.update("none");
-          }
-          if (charts.speed) {
-            // Find the max absolute speed currently in the plot data to ensure it remains visible
-            const maxPrevSpeed =
-              plotData.speed_actual.length > 0
-                ? Math.max(...plotData.speed_actual.map((s) => Math.abs(s)))
-                : 0;
-
-            // The scale should be large enough to contain the previous speed range and the new reference
-            const targetRange = Math.max(
-              maxPrevSpeed,
-              Math.abs(params.speed_ref_rpm)
+        function readMotor() {
+          const m = { ...motor };
+          defs.forEach(([k, , , q]) => {
+            let v = Number($("m_" + k).value);
+            if (!Number.isFinite(v)) throw Error(`Invalid ${k}`);
+            m[k] = q === "rpm" ? rpm(v) : v / q;
+          });
+          m.p = Math.max(1, Math.round(m.p));
+          if (
+            m.vdc <= 0 ||
+            m.rs <= 0 ||
+            m.ld <= 0 ||
+            m.lq <= 0 ||
+            m.psi <= 0 ||
+            m.J <= 0 ||
+            m.imax <= 0 ||
+            m.wb <= 0 ||
+            m.tb <= 0 ||
+            m.B < 0
+          )
+            throw Error("Motor parameters must be positive; B may be zero.");
+          return (motor = m);
+        }
+        function selectMotor() {
+          motor = { ...motors[+sel.value] };
+          renderFields();
+          const p = props(motor);
+          $("motorNote").textContent = motor.note;
+          $("motorSummary").textContent = `${motor.key} · ${motor.name}`;
+          $("targetRpm").value = fmt(toRpm(motor.wb), 2);
+          $("loadNm").value = fmt(0.8 * p.tb, 5);
+          maxTab = 1;
+          openTab(1);
+          $("statusText").textContent = "Verify motor parameters";
+        }
+        function openTab(n) {
+          if (n > maxTab) return;
+          document
+            .querySelectorAll(".panel")
+            .forEach((x) =>
+              x.classList.toggle("active", +x.dataset.panel === n),
             );
-
-            // Set the scale with some headroom (e.g., 50% more) and a minimum value
-            const speedScaleMax = Math.max(300, targetRange * 1.5);
-
-            charts.speed.options.scales.y.max = speedScaleMax;
-            charts.speed.options.scales.y.min = -speedScaleMax;
-            charts.speed.update("none");
-          }
-        }
-
-        function updatePlots() {
-          const timeLabels = plotData.time.map((t) => t.toFixed(3));
-          for (const chart of Object.values(charts)) {
-            chart.data.labels = timeLabels;
-            chart.options.scales.x.min =
-              plotData.time.length > 0 ? plotData.time[0] : 0;
-            chart.options.scales.x.max =
-              plotData.time.length > 0
-                ? plotData.time[plotData.time.length - 1]
-                : 1;
-            chart.update("none");
-          }
-        }
-
-        function pushData() {
-          if (plotData.time.length >= PLOT_POINTS) {
-            Object.values(plotData).forEach((arr) => arr.shift());
-          }
-          const { ia, ib, ic } = inverseClarke(
-            inversePark(params.id, params.iq, params.theta_elec)
-          );
-          plotData.time.push(params.time);
-          plotData.ia.push(ia);
-          plotData.ib.push(ib);
-          plotData.ic.push(ic);
-          plotData.id.push(params.id);
-          plotData.iq.push(params.iq);
-          plotData.speed_ref.push(params.speed_ref_rpm);
-          plotData.speed_actual.push(params.speed_rpm);
-          plotData.torque_ref.push(params.load_torque);
-          plotData.torque_actual.push(params.torque_elec);
-        }
-
-        // --- Transformations ---
-        const inversePark = (d, q, theta) => ({
-          alpha: d * Math.cos(theta) - q * Math.sin(theta),
-          beta: d * Math.sin(theta) + q * Math.cos(theta),
-        });
-        const inverseClarke = ({ alpha, beta }) => ({
-          ia: alpha,
-          ib: -0.5 * alpha + (SQRT3 / 2) * beta,
-          ic: -0.5 * alpha - (SQRT3 / 2) * beta,
-        });
-
-        // --- Animation ---
-        const motorCanvas = document.getElementById("motor-animation-canvas");
-        const motorCtx = motorCanvas.getContext("2d");
-
-        function setupAnimationCanvas() {
-          const dpr = window.devicePixelRatio || 1;
-          const rect = motorCanvas.getBoundingClientRect();
-          motorCanvas.width = rect.width * dpr;
-          motorCanvas.height = rect.height * dpr;
-          motorCtx.scale(dpr, dpr);
-        }
-
-        function drawMotor() {
-          const w = motorCanvas.clientWidth;
-          const h = motorCanvas.clientHeight;
-
-          // Correctly clear the scaled canvas
-          motorCtx.save();
-          motorCtx.setTransform(1, 0, 0, 1, 0, 0);
-          motorCtx.clearRect(0, 0, motorCanvas.width, motorCanvas.height);
-          motorCtx.restore();
-
-          const cx = w / 2,
-            cy = h / 2;
-          const statorRadius = Math.min(cx, cy) * 0.9,
-            rotorRadius = statorRadius * 0.6,
-            phasorScale = 15;
-
-          // Draw Stator
-          motorCtx.strokeStyle = "#333";
-          motorCtx.lineWidth = 10;
-          motorCtx.beginPath();
-          motorCtx.arc(cx, cy, statorRadius, 0, 2 * PI);
-          motorCtx.stroke();
-
-          // Draw Rotor
-          motorCtx.save();
-          motorCtx.translate(cx, cy);
-          motorCtx.rotate(params.animation_theta_mech); // Use scaled mechanical angle for animation
-
-          // Draw rotor body (iron core)
-          motorCtx.fillStyle = "#B0B0B0"; // A metallic grey color
-          motorCtx.beginPath();
-          motorCtx.arc(0, 0, rotorRadius, 0, 2 * PI);
-          motorCtx.fill();
-
-          const polePairs = params.P;
-          const totalPoles = 2 * polePairs;
-          const segmentAngle = (2 * PI) / totalPoles;
-          const magnetArcAngle = segmentAngle * 0.8; // Magnet covers 80% of the pole pitch
-          const gapAngle = segmentAngle - magnetArcAngle;
-
-          const magnetThickness = rotorRadius * 0.15; // The radial thickness of the magnet
-          const outerRotorRadius = rotorRadius;
-          const innerMagnetRadius = outerRotorRadius - magnetThickness;
-
-          for (let i = 0; i < totalPoles; i++) {
-            motorCtx.fillStyle = i % 2 === 0 ? "red" : "blue"; // Alternating North/South
-            // Offset by -PI/2 to align first magnet with the D-axis (positive X)
-            const startAngle =
-              i * segmentAngle + gapAngle / 2 + segmentAngle / 2;
-            const endAngle = startAngle + magnetArcAngle;
-
-            motorCtx.beginPath();
-            motorCtx.arc(0, 0, outerRotorRadius, startAngle, endAngle); // Outer arc
-            motorCtx.arc(0, 0, innerMagnetRadius, endAngle, startAngle, true); // Inner arc (clockwise)
-            motorCtx.closePath();
-            motorCtx.fill();
-          }
-          motorCtx.restore();
-
-          // Draw d-q frame and vectors
-          motorCtx.save();
-          motorCtx.translate(cx, cy);
-          motorCtx.rotate(params.animation_theta_mech); // Rotate the entire frame to the rotor's mechanical position
-
-          motorCtx.lineWidth = 1;
-          motorCtx.font = "16px Arial";
-          motorCtx.fillStyle = "#333";
-
-          // D-axis is the reference, drawn along the new x-axis
-          motorCtx.strokeStyle = "#FF0000";
-          motorCtx.beginPath();
-          motorCtx.moveTo(-statorRadius, 0);
-          motorCtx.lineTo(statorRadius, 0);
-          motorCtx.stroke();
-          motorCtx.fillText("D", statorRadius - 25, -10);
-
-          // --- MODIFICATION START ---
-          // Calculate the mechanical angle for the Q-axis (90 electrical degrees)
-          const q_mech_angle = Math.PI / 2 / params.P;
-          const cos_q = Math.cos(q_mech_angle);
-          const sin_q = Math.sin(q_mech_angle);
-
-          // Draw Q-axis line at the correct mechanical angle
-          motorCtx.strokeStyle = "#0000FF";
-          motorCtx.beginPath();
-          motorCtx.moveTo(-statorRadius * cos_q, -statorRadius * sin_q);
-          motorCtx.lineTo(statorRadius * cos_q, statorRadius * sin_q);
-          motorCtx.stroke();
-          motorCtx.fillText(
-            "Q",
-            statorRadius * cos_q - 25,
-            statorRadius * sin_q - 10
-          );
-
-          motorCtx.lineWidth = 3;
-
-          // Draw id vector along the D-axis
-          const id_x = params.id * phasorScale;
-          const id_y = 0;
-          motorCtx.strokeStyle = "#FF0000";
-          motorCtx.beginPath();
-          motorCtx.moveTo(0, 0);
-          motorCtx.lineTo(id_x, id_y);
-          motorCtx.stroke();
-
-          // Draw iq vector along the Q-axis
-          const iq_x = params.iq * phasorScale * cos_q;
-          const iq_y = params.iq * phasorScale * sin_q;
-          motorCtx.strokeStyle = "#0000FF";
-          motorCtx.beginPath();
-          motorCtx.moveTo(0, 0);
-          motorCtx.lineTo(iq_x, iq_y);
-          motorCtx.stroke();
-
-          // Draw the resultant current vector (vector sum of id and iq)
-          motorCtx.strokeStyle = "#333";
-          motorCtx.beginPath();
-          motorCtx.moveTo(0, 0);
-          motorCtx.lineTo(id_x + iq_x, id_y + iq_y);
-          motorCtx.stroke();
-          // --- MODIFICATION END ---
-
-          motorCtx.restore();
-
-          // Draw RPM text on canvas
-          motorCtx.fillStyle = "#333";
-          motorCtx.font = "14px Arial";
-          motorCtx.textAlign = "left";
-          motorCtx.fillText(
-            `Actual RPM: ${params.speed_rpm.toFixed(0)}`,
-            10,
-            20
-          );
-        }
-        // --- FOC Simulation Core ---
-        function getDerivatives(state, vd, vq) {
-          const { id, iq, speed_rad_s } = state;
-          const w_elec = speed_rad_s * params.P;
-          const did_dt =
-            (vd - params.Rs * id + w_elec * params.Lq * iq) / params.Ld;
-          const diq_dt =
-            (vq -
-              params.Rs * iq -
-              w_elec * params.Ld * id -
-              w_elec * params.lambda_m) /
-            params.Lq;
-          const torque_elec =
-            1.5 *
-            params.P *
-            (params.lambda_m * iq + (params.Ld - params.Lq) * id * iq);
-          const torque_friction = params.B * speed_rad_s;
-          const torque_net = torque_elec - params.load_torque - torque_friction;
-          const d_speed_dt = torque_net / params.J;
-          return { did_dt, diq_dt, d_speed_dt, torque_elec };
-        }
-
-        function rk4Step(state, vd, vq, dt) {
-          const k1 = getDerivatives(state, vd, vq);
-          const state2 = {
-            id: state.id + (k1.did_dt * dt) / 2,
-            iq: state.iq + (k1.diq_dt * dt) / 2,
-            speed_rad_s: state.speed_rad_s + (k1.d_speed_dt * dt) / 2,
-          };
-          const k2 = getDerivatives(state2, vd, vq);
-          const state3 = {
-            id: state.id + (k2.did_dt * dt) / 2,
-            iq: state.iq + (k2.diq_dt * dt) / 2,
-            speed_rad_s: state.speed_rad_s + (k2.d_speed_dt * dt) / 2,
-          };
-          const k3 = getDerivatives(state3, vd, vq);
-          const state4 = {
-            id: state.id + k3.did_dt * dt,
-            iq: state.iq + k3.diq_dt * dt,
-            speed_rad_s: state.speed_rad_s + k3.d_speed_dt * dt,
-          };
-          const k4 = getDerivatives(state4, vd, vq);
-          state.id +=
-            ((k1.did_dt + 2 * k2.did_dt + 2 * k3.did_dt + k4.did_dt) * dt) / 6;
-          state.iq +=
-            ((k1.diq_dt + 2 * k2.diq_dt + 2 * k3.diq_dt + k4.diq_dt) * dt) / 6;
-          state.speed_rad_s +=
-            ((k1.d_speed_dt +
-              2 * k2.d_speed_dt +
-              2 * k3.d_speed_dt +
-              k4.d_speed_dt) *
-              dt) /
-            6;
-          return getDerivatives(state, vd, vq).torque_elec;
-        }
-
-        function focStep() {
-          const p = params;
-          const w_elec = p.speed_rad_s * p.P;
-          const speed_ref_rad_s = (p.speed_ref_rpm * 2 * PI) / 60;
-          const speed_error = speed_ref_rad_s - p.speed_rad_s;
-          p.speed_integrator += p.speed_ki * speed_error * DT;
-          p.speed_integrator = Math.max(
-            -p.current_limit,
-            Math.min(p.current_limit, p.speed_integrator)
-          );
-          p.iq_ref = p.speed_kp * speed_error + p.speed_integrator;
-          p.id_ref = 0;
-          p.iq_ref = Math.max(
-            -p.current_limit,
-            Math.min(p.current_limit, p.iq_ref)
-          );
-          const id_error = p.id_ref - p.id;
-          const iq_error = p.iq_ref - p.iq;
-          p.id_integrator += p.id_ki * id_error * DT;
-          p.iq_integrator += p.iq_ki * iq_error * DT;
-          const integratorLimit = p.dc_voltage;
-          p.id_integrator = Math.max(
-            -integratorLimit,
-            Math.min(integratorLimit, p.id_integrator)
-          );
-          p.iq_integrator = Math.max(
-            -integratorLimit,
-            Math.min(integratorLimit, p.iq_integrator)
-          );
-          const vd_unclamped =
-            p.id_kp * id_error + p.id_integrator - w_elec * p.Lq * p.iq;
-          const vq_unclamped =
-            p.iq_kp * iq_error +
-            p.iq_integrator +
-            w_elec * p.Ld * p.id +
-            w_elec * p.lambda_m;
-          const v_max = p.dc_voltage / SQRT3;
-          const v_mag = Math.sqrt(
-            vd_unclamped * vd_unclamped + vq_unclamped * vq_unclamped
-          );
-          if (v_mag > v_max) {
-            p.vd = (vd_unclamped * v_max) / v_mag;
-            p.vq = (vq_unclamped * v_max) / v_mag;
-          } else {
-            p.vd = vd_unclamped;
-            p.vq = vq_unclamped;
-          }
-          const motorState = { id: p.id, iq: p.iq, speed_rad_s: p.speed_rad_s };
-          p.torque_elec = rk4Step(motorState, p.vd, p.vq, DT);
-          p.id = motorState.id;
-          p.iq = motorState.iq;
-          p.speed_rad_s = motorState.speed_rad_s;
-          p.speed_rpm = (p.speed_rad_s * 60) / (2 * PI);
-          p.theta_mech += p.speed_rad_s * DT;
-          p.animation_theta_mech += p.speed_rad_s * ANIMATION_SPEED_SCALE * DT;
-          p.theta_elec = (p.theta_mech * p.P) % (2 * PI);
-          p.animation_theta_elec = (p.animation_theta_mech * p.P) % (2 * PI);
-        }
-
-        // --- Main Loop ---
-        let frameCounter = 0;
-        function simulationLoop() {
-          if (!isRunning) return;
-          for (let i = 0; i < 10; i++) {
-            params.time += DT;
-            focStep();
-          }
-          frameCounter++;
-          if (frameCounter >= 2) {
-            pushData();
-            updatePlots();
-            drawMotor();
-            frameCounter = 0;
-          }
-          animationFrameId = requestAnimationFrame(simulationLoop);
-        }
-
-        // --- UI and Parameter Handling ---
-        function linkSliderAndInput(
-          control,
-          paramKey,
-          isFloat = false,
-          callback = null
-        ) {
-          const updateParam = () => {
-            const value = isFloat
-              ? parseFloat(control.slider.value)
-              : parseInt(control.slider.value, 10);
-            control.input.value = value;
-            params[paramKey] = value;
-            if (callback) callback();
-          };
-          control.slider.addEventListener("input", updateParam);
-          control.input.addEventListener("input", () => {
-            const value = isFloat
-              ? parseFloat(control.input.value)
-              : parseInt(control.input.value, 10);
-            const min = parseFloat(control.slider.min);
-            const max = parseFloat(control.slider.max);
-            if (!isNaN(value) && value >= min && value <= max) {
-              control.slider.value = value;
-              updateParam();
-            }
+          document.querySelectorAll(".tab").forEach((x) => {
+            const k = +x.dataset.tab;
+            x.disabled = k > maxTab;
+            x.classList.toggle("active", k === n);
+            x.classList.toggle("complete", k < maxTab && k !== n);
           });
         }
-
-        function syncUiToParams() {
-          const keyMap = {
-            speedRef: "speed_ref_rpm",
-            loadTorque: "load_torque",
-            dcVoltage: "dc_voltage",
-            currentLimit: "current_limit",
-            speedKp: "speed_kp",
-            speedKi: "speed_ki",
-            iqKp: "iq_kp",
-            iqKi: "iq_ki",
+        function calcGains() {
+          const p = props(motor),
+            wci = 2 * PI * Math.max(1, +$("currentBw").value || 1000),
+            wn = 2 * PI * Math.max(0.1, +$("speedBw").value || 20),
+            z = Math.max(0.1, +$("speedZeta").value || 1);
+          $("idKp").value = fmt(motor.ld * wci, 8);
+          $("idKi").value = fmt(motor.rs * wci, 8);
+          $("iqKp").value = fmt(motor.lq * wci, 8);
+          $("iqKi").value = fmt(motor.rs * wci, 8);
+          $("speedKp").value = fmt(
+            Math.max(0, (2 * z * wn * motor.J - motor.B) / p.kt),
+            8,
+          );
+          $("speedKi").value = fmt((wn * wn * motor.J) / p.kt, 8);
+          $("derivedStrip").innerHTML =
+            `<code>kt = ${fmt(p.kt, 5)} N·m/A</code><code>τd = ${fmt(p.tauD * 1000, 4)} ms</code><code>τq = ${fmt(p.tauQ * 1000, 4)} ms</code><code>TB = ${fmt(p.tb, 4)} N·m</code>`;
+          $("gainSummary").textContent =
+            `Current BW ${fmt(wci / (2 * PI), 0)} Hz · Speed fn ${fmt(wn / (2 * PI), 1)} Hz · ζ ${fmt(z, 2)}`;
+        }
+        function gains() {
+          const g = (id) => {
+            const v = +$(id).value;
+            if (!Number.isFinite(v) || v < 0)
+              throw Error(`Invalid gain: ${id}`);
+            return v;
           };
-          for (const [key, control] of Object.entries(uiControls)) {
-            if (params[keyMap[key]] !== undefined) {
-              control.slider.value = params[keyMap[key]];
-              control.input.value = params[keyMap[key]];
+          return {
+            swKp: g("speedKp"),
+            swKi: g("speedKi"),
+            idKp: g("idKp"),
+            idKi: g("idKi"),
+            iqKp: g("iqKp"),
+            iqKi: g("iqKi"),
+          };
+        }
+        function ref(t, target, start, rt) {
+          if (t < start) return 0;
+          return mode === "step"
+            ? target
+            : target * clamp((t - start) / rt, 0, 1);
+        }
+        function der(s, vd, vq, load) {
+          const we = s.w * motor.p,
+            did = (vd - motor.rs * s.id + we * motor.lq * s.iq) / motor.ld,
+            diq =
+              (vq - motor.rs * s.iq - we * motor.ld * s.id - we * motor.psi) /
+              motor.lq,
+            te =
+              1.5 *
+              motor.p *
+              (motor.psi * s.iq + (motor.ld - motor.lq) * s.id * s.iq);
+          return { did, diq, dw: (te - load - motor.B * s.w) / motor.J, te };
+        }
+        function rk4(s, vd, vq, load) {
+          const a = der(s, vd, vq, load),
+            s2 = {
+              id: s.id + (a.did * DT) / 2,
+              iq: s.iq + (a.diq * DT) / 2,
+              w: s.w + (a.dw * DT) / 2,
+            },
+            b = der(s2, vd, vq, load),
+            s3 = {
+              id: s.id + (b.did * DT) / 2,
+              iq: s.iq + (b.diq * DT) / 2,
+              w: s.w + (b.dw * DT) / 2,
+            },
+            c = der(s3, vd, vq, load),
+            s4 = {
+              id: s.id + c.did * DT,
+              iq: s.iq + c.diq * DT,
+              w: s.w + c.dw * DT,
+            },
+            d = der(s4, vd, vq, load);
+          s.id += (DT * (a.did + 2 * b.did + 2 * c.did + d.did)) / 6;
+          s.iq += (DT * (a.diq + 2 * b.diq + 2 * c.diq + d.diq)) / 6;
+          s.w += (DT * (a.dw + 2 * b.dw + 2 * c.dw + d.dw)) / 6;
+          return der(s, vd, vq, load).te;
+        }
+        function simulate(withLoad) {
+          const g = gains(),
+            p = props(motor),
+            target = rpm(+$("targetRpm").value || 0),
+            duration = clamp((+$("durationMs").value || 600) / 1000, 0.1, 5),
+            start = clamp((+$("startMs").value || 0) / 1000, 0, duration),
+            rt = Math.max((+$("rampMs").value || 0.1) / 1000, 1e-6),
+            loadAt = clamp((+$("loadAtMs").value || 0) / 1000, 0, duration),
+            loadNm = withLoad ? +$("loadNm").value || 0 : 0,
+            n = Math.floor(duration / DT) + 1,
+            every = Math.max(1, Math.floor(n / 1800)),
+            s = { id: 0, iq: 0, w: 0 },
+            o = {
+              t: [],
+              ref: [],
+              speed: [],
+              id: [],
+              iq: [],
+              ia: [],
+              ib: [],
+              ic: [],
+              te: [],
+              load: [],
+              vpu: [],
+              theta: [],
+            };
+          let th = 0,
+            iw = 0,
+            iid = 0,
+            iiq = 0;
+          for (let k = 0; k < n; k++) {
+            const t = k * DT,
+              wr = ref(t, target, start, rt),
+              load = withLoad && t >= loadAt ? loadNm : 0,
+              ew = wr - s.w,
+              cw = iw + g.swKi * ew * DT,
+              iqu = g.swKp * ew + cw,
+              iqr = clamp(iqu, -motor.imax, motor.imax);
+            if (
+              iqu === iqr ||
+              (iqu > motor.imax && ew < 0) ||
+              (iqu < -motor.imax && ew > 0)
+            )
+              iw = cw;
+            const ed = -s.id,
+              eq = iqr - s.iq,
+              vdu = g.idKp * ed + iid - motor.p * s.w * motor.lq * s.iq,
+              vqu =
+                g.iqKp * eq +
+                iiq +
+                motor.p * s.w * (motor.ld * s.id + motor.psi),
+              mag = Math.hypot(vdu, vqu),
+              sc = mag > p.vmax ? p.vmax / mag : 1,
+              vd = vdu * sc,
+              vq = vqu * sc,
+              kaw = 1 / Math.max(g.idKp + g.iqKp, 1e-6);
+            iid = clamp(
+              iid + DT * (g.idKi * ed + kaw * (vd - vdu)),
+              -p.vmax,
+              p.vmax,
+            );
+            iiq = clamp(
+              iiq + DT * (g.iqKi * eq + kaw * (vq - vqu)),
+              -p.vmax,
+              p.vmax,
+            );
+            const te = rk4(s, vd, vq, load);
+            th = (th + s.w * DT) % (2 * PI);
+            if (!Number.isFinite(s.w) || Math.abs(s.w) > 1e8)
+              throw Error(
+                "Numerical divergence. Reduce loop bandwidth or gains.",
+              );
+            if (k % every === 0 || k === n - 1) {
+              const a = th * motor.p,
+                al = s.id * Math.cos(a) - s.iq * Math.sin(a),
+                be = s.id * Math.sin(a) + s.iq * Math.cos(a);
+              o.t.push(t);
+              o.ref.push(toRpm(wr));
+              o.speed.push(toRpm(s.w));
+              o.id.push(s.id);
+              o.iq.push(s.iq);
+              o.ia.push(al);
+              o.ib.push(-0.5 * al + SQRT3 * 0.5 * be);
+              o.ic.push(-0.5 * al - SQRT3 * 0.5 * be);
+              o.te.push(te);
+              o.load.push(load);
+              o.vpu.push(Math.hypot(vd, vq) / p.vmax);
+              o.theta.push(th);
             }
           }
+          o.info = {
+            target: toRpm(target),
+            duration,
+            start,
+            rampT: rt,
+            loadAt,
+            loadNm,
+            withLoad,
+            p,
+            samples: n,
+          };
+          return o;
         }
-
-        function updateParameterDisplay() {
-          paramsDisplayList.innerHTML = `
-            <li>Pole Pairs (P): <span>${params.P}</span></li>
-            <li>Resistance (Rs): <span>${params.Rs.toFixed(3)} Ω</span></li>
-            <li>d-Inductance (Ld): <span>${(params.Ld * 1000).toFixed(
-              2
-            )} mH</span></li>
-            <li>q-Inductance (Lq): <span>${(params.Lq * 1000).toFixed(
-              2
-            )} mH</span></li>
-            <li>Flux Linkage (λm): <span>${params.lambda_m.toFixed(
-              3
-            )} Wb</span></li>
-            <li>Inertia (J): <span>${params.J.toFixed(4)} kg·m²</span></li>
-        `;
+        const col = {
+            blue: "#00629b",
+            gray: "#46545e",
+            magenta: "#a52052",
+            orange: "#d97800",
+            cyan: "#008f95",
+            green: "#23724c",
+            violet: "#6941c6",
+          },
+          pts = (t, y, s) => t.map((x, i) => ({ x: x * s, y: y[i] }));
+        function chart(id, sets, y, tr) {
+          const ms = tr.info.duration < 1,
+            s = ms ? 1000 : 1;
+          return new Chart($(id), {
+            type: "line",
+            data: { datasets: sets.map((x) => ({ ...x, data: [] })) },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: false,
+              normalized: true,
+              parsing: false,
+              interaction: { mode: "nearest", intersect: false },
+              plugins: {
+                legend: {
+                  position: "top",
+                  labels: {
+                    font: { family: "Arial", size: 13 },
+                    usePointStyle: true,
+                    pointStyle: "line",
+                    boxWidth: 26,
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  type: "linear",
+                  min: 0,
+                  max: tr.info.duration * s,
+                  title: {
+                    display: true,
+                    text: `Time (${ms ? "ms" : "s"})`,
+                    font: { family: "Cambria", size: 14, style: "italic" },
+                  },
+                  ticks: { font: { size: 12 } },
+                  grid: { color: "#e4e8eb" },
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: y,
+                    font: { family: "Cambria", size: 14, style: "italic" },
+                  },
+                  ticks: { font: { size: 12 } },
+                  grid: { color: "#d7dde1" },
+                },
+              },
+              elements: { point: { radius: 0 }, line: { borderWidth: 2 } },
+            },
+          });
         }
-
-        function recalculateCurrentGains() {
-          const bandwidthHz = 1000; // Target bandwidth for the current loop
-          const omega_c = bandwidthHz * 2 * PI;
-
-          // Pole-zero cancellation tuning
-          let new_kp = Math.round(omega_c * params.Lq);
-          let new_ki = Math.round(omega_c * params.Rs);
-
-          // Limit Ki to be no more than 20x Kp for stability
-          if (new_ki > 20 * new_kp) {
-            new_ki = 20 * new_kp;
-          }
-
-          params.id_kp = new_kp;
-          params.iq_kp = new_kp;
-          params.id_ki = new_ki;
-          params.iq_ki = new_ki;
-
-          // Update UI controls for the Iq controller
-          uiControls.iqKp.slider.value = new_kp;
-          uiControls.iqKp.input.value = new_kp;
-          uiControls.iqKi.slider.value = new_ki;
-          uiControls.iqKi.input.value = new_ki;
+        function setupCharts(tr) {
+          Object.values(charts).forEach((c) => c.destroy());
+          charts.speed = chart(
+            "speedChart",
+            [
+              { label: "Reference", borderColor: col.gray, borderDash: [7, 5] },
+              { label: "Actual", borderColor: col.blue },
+            ],
+            "Speed (rpm)",
+            tr,
+          );
+          charts.dq = chart(
+            "dqChart",
+            [
+              { label: "id", borderColor: col.magenta },
+              { label: "iq", borderColor: col.orange },
+            ],
+            "Current (A)",
+            tr,
+          );
+          charts.phase = chart(
+            "phaseChart",
+            [
+              { label: "ia", borderColor: col.blue },
+              { label: "ib", borderColor: col.orange },
+              { label: "ic", borderColor: col.green },
+            ],
+            "Current (A)",
+            tr,
+          );
+          charts.torque = chart(
+            "torqueChart",
+            [
+              { label: "Te", borderColor: col.cyan },
+              { label: "TL", borderColor: col.violet, borderDash: [7, 5] },
+            ],
+            "Torque (N·m)",
+            tr,
+          );
+          const s = tr.info.duration < 1 ? 1000 : 1;
+          tr.pts = {
+            speed: [pts(tr.t, tr.ref, s), pts(tr.t, tr.speed, s)],
+            dq: [pts(tr.t, tr.id, s), pts(tr.t, tr.iq, s)],
+            phase: [
+              pts(tr.t, tr.ia, s),
+              pts(tr.t, tr.ib, s),
+              pts(tr.t, tr.ic, s),
+            ],
+            torque: [pts(tr.t, tr.te, s), pts(tr.t, tr.load, s)],
+          };
         }
-
-        function fullReset() {
-          isRunning = false;
-          cancelAnimationFrame(animationFrameId);
-
-          const oldParams = { ...params };
-          setDefaultParams();
-          // Keep user-set motor parameters after reset, unless it's the first run
-          if (Object.keys(oldParams).length > 0) {
-            params.P = oldParams.P;
-            params.Rs = oldParams.Rs;
-            params.Ld = oldParams.Ld;
-            params.Lq = oldParams.Lq;
-            params.lambda_m = oldParams.lambda_m;
-            params.J = oldParams.J;
+        function updateCharts(tr, n) {
+          for (const [k, c] of Object.entries(charts)) {
+            tr.pts[k].forEach(
+              (a, i) => (c.data.datasets[i].data = a.slice(0, n)),
+            );
+            c.update("none");
           }
-
-          recalculateCurrentGains();
-          syncUiToParams();
-          updateParameterDisplay();
-          Object.keys(plotData).forEach((key) => (plotData[key] = []));
-          initPlots();
-          setupAnimationCanvas(); // Recalculate canvas size on reset
-          drawMotor();
-          startStopBtn.textContent = "Start";
-          startStopBtn.classList.remove("running");
         }
-
-        // --- Modal Logic ---
-        editParamsBtn.addEventListener("click", () => {
-          // Populate modal with current values
-          for (const [key, input] of Object.entries(modalInputs)) {
-            input.value = params[key];
+        function metrics(d) {
+          const tar = d.info.target,
+            abs = Math.abs(tar) || 1,
+            dir = Math.sign(tar) || 1,
+            event = d.info.start + (mode === "ramp" ? d.info.rampT : 0),
+            end = d.info.withLoad ? d.info.loadAt : d.info.duration;
+          let a = -1,
+            b = -1,
+            peak = -Infinity,
+            iq = 0,
+            v = 0;
+          for (let i = 0; i < d.t.length; i++) {
+            const y = dir * d.speed[i],
+              q = dir * tar;
+            if (d.t[i] >= d.info.start && a < 0 && y >= 0.1 * q) a = i;
+            if (d.t[i] >= d.info.start && b < 0 && y >= 0.9 * q) b = i;
+            if (d.t[i] >= event && d.t[i] <= end) peak = Math.max(peak, y);
+            iq = Math.max(iq, Math.abs(d.iq[i]));
+            v = Math.max(v, d.vpu[i]);
           }
-          paramsModal.style.display = "flex";
-        });
-
-        modalCancelBtn.addEventListener("click", () => {
-          paramsModal.style.display = "none";
-        });
-
-        paramsForm.addEventListener("submit", (e) => {
-          e.preventDefault();
-          // Update params from modal inputs
-          for (const [key, input] of Object.entries(modalInputs)) {
-            params[key] = parseFloat(input.value);
+          let st = NaN;
+          for (let i = 0; i < d.t.length; i++) {
+            if (d.t[i] < event || d.t[i] > end) continue;
+            let ok = true;
+            for (let j = i; j < d.t.length && d.t[j] <= end; j++)
+              if (Math.abs(d.speed[j] - tar) > 0.02 * abs) {
+                ok = false;
+                break;
+              }
+            if (ok) {
+              st = (d.t[i] - event) * 1000;
+              break;
+            }
           }
-          paramsModal.style.display = "none";
-          fullReset(); // Reset the simulation with new parameters and gains
-        });
-
-        // --- Initialization ---
-        startStopBtn.addEventListener("click", () => {
-          isRunning = !isRunning;
-          startStopBtn.textContent = isRunning ? "Stop" : "Start";
-          startStopBtn.classList.toggle("running", isRunning);
-          if (isRunning) {
-            animationFrameId = requestAnimationFrame(simulationLoop);
-          } else {
-            cancelAnimationFrame(animationFrameId);
+          const n = Math.max(1, Math.floor(d.t.length * 0.08));
+          let mean = 0;
+          for (let i = d.t.length - n; i < d.t.length; i++) mean += d.speed[i];
+          mean /= n;
+          return {
+            rise: a >= 0 && b >= 0 ? (d.t[b] - d.t[a]) * 1000 : NaN,
+            st,
+            over: Number.isFinite(peak)
+              ? Math.max(0, ((peak - Math.abs(tar)) / abs) * 100)
+              : NaN,
+            iq,
+            v,
+            err: (Math.abs(tar - mean) / abs) * 100,
+          };
+        }
+        function showMetrics(d) {
+          const m = metrics(d);
+          $("mRise").textContent = fmt(m.rise, 2);
+          $("mSettle").textContent = fmt(m.st, 2);
+          $("mOver").textContent = fmt(m.over, 3);
+          $("mIq").textContent = fmt(m.iq, 3);
+          $("mIqUnit").textContent = `A · ${fmt(m.iq / motor.imax, 3)} pu`;
+          $("mVolt").textContent = fmt(m.v, 3);
+          $("mErr").textContent = fmt(m.err, 3);
+        }
+        const cv = $("motorCanvas"),
+          cx = cv.getContext("2d");
+        function drawMotor(tr, i) {
+          const r = cv.getBoundingClientRect(),
+            dpr = devicePixelRatio || 1;
+          cv.width = r.width * dpr;
+          cv.height = r.height * dpr;
+          cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          cx.clearRect(0, 0, r.width, r.height);
+          const x = r.width / 2,
+            y = r.height * 0.43,
+            R = Math.min(r.width * 0.4, r.height * 0.32),
+            rr = R * 0.62,
+            th = tr.theta[i] % (2 * PI);
+          cx.strokeStyle = "#34434d";
+          cx.lineWidth = 12;
+          cx.beginPath();
+          cx.arc(x, y, R, 0, 2 * PI);
+          cx.stroke();
+          cx.save();
+          cx.translate(x, y);
+          cx.rotate(th);
+          cx.fillStyle = "#c7cdd1";
+          cx.beginPath();
+          cx.arc(0, 0, rr, 0, 2 * PI);
+          cx.fill();
+          const poles = 2 * motor.p,
+            seg = (2 * PI) / poles;
+          for (let k = 0; k < poles; k++) {
+            cx.fillStyle = k % 2 ? "#00629b" : "#b83232";
+            cx.beginPath();
+            cx.arc(0, 0, rr, k * seg + 0.08 * seg, (k + 1) * seg - 0.08 * seg);
+            cx.arc(
+              0,
+              0,
+              rr * 0.82,
+              (k + 1) * seg - 0.08 * seg,
+              k * seg + 0.08 * seg,
+              true,
+            );
+            cx.fill();
           }
-        });
-
-        resetBtn.addEventListener("click", fullReset);
-
-        linkSliderAndInput(
-          uiControls.speedRef,
-          "speed_ref_rpm",
-          false,
-          updatePlotScales
-        );
-        linkSliderAndInput(uiControls.loadTorque, "load_torque", true);
-        linkSliderAndInput(uiControls.dcVoltage, "dc_voltage");
-        linkSliderAndInput(
-          uiControls.currentLimit,
-          "current_limit",
-          false,
-          updatePlotScales
-        );
-        linkSliderAndInput(uiControls.speedKp, "speed_kp", true);
-        linkSliderAndInput(uiControls.speedKi, "speed_ki", true);
-        linkSliderAndInput(uiControls.iqKp, "iq_kp", true);
-        linkSliderAndInput(uiControls.iqKi, "iq_ki", true);
-
-        window.addEventListener("resize", () => {
-          clearTimeout(resizeTimer);
-          resizeTimer = setTimeout(() => {
-            setupAnimationCanvas();
-            Object.values(charts).forEach((chart) => chart.resize());
-          }, 250);
-        });
-
-        window.onload = () => {
-          fullReset(); // Start with a clean slate after the page is fully loaded
+          const qa = PI / (2 * motor.p);
+          cx.strokeStyle = "#a52052";
+          cx.lineWidth = 2;
+          cx.beginPath();
+          cx.moveTo(-R, 0);
+          cx.lineTo(R, 0);
+          cx.stroke();
+          cx.strokeStyle = "#00629b";
+          cx.beginPath();
+          cx.moveTo(-R * Math.cos(qa), -R * Math.sin(qa));
+          cx.lineTo(R * Math.cos(qa), R * Math.sin(qa));
+          cx.stroke();
+          const z = Math.max(motor.imax, 1),
+            id = (tr.id[i] / z) * R * 0.8,
+            iq = (tr.iq[i] / z) * R * 0.8;
+          cx.lineWidth = 5;
+          cx.strokeStyle = "#a52052";
+          cx.beginPath();
+          cx.moveTo(0, 0);
+          cx.lineTo(id, 0);
+          cx.stroke();
+          cx.strokeStyle = "#d97800";
+          cx.beginPath();
+          cx.moveTo(0, 0);
+          cx.lineTo(iq * Math.cos(qa), iq * Math.sin(qa));
+          cx.stroke();
+          cx.restore();
+          cx.fillStyle = "#17212a";
+          cx.font = "700 15px Arial";
+          cx.fillText(
+            `${motor.key} · ${fmt(tr.speed[i], 1)} rpm`,
+            16,
+            r.height - 66,
+          );
+          cx.font = "13px Consolas";
+          cx.fillStyle = "#56636d";
+          cx.fillText(`id = ${fmt(tr.id[i], 3)} A`, 16, r.height - 43);
+          cx.fillText(`iq = ${fmt(tr.iq[i], 3)} A`, 16, r.height - 23);
+        }
+        function renderAt(tr, q) {
+          q = clamp(q, 0, 1);
+          const n = Math.max(2, Math.floor(q * (tr.t.length - 1)) + 1),
+            t = tr.t[n - 1];
+          updateCharts(tr, n);
+          drawMotor(tr, n - 1);
+          $("clock").textContent =
+            tr.info.duration < 1
+              ? "t = " + fmt(t * 1000, 1) + " ms"
+              : "t = " + fmt(t, 3) + " s";
+          $("progressFill").style.width = q * 100 + "%";
+          $("timeScrubber").value = Math.round(q * 1000);
+          $("timeScrubber").setAttribute(
+            "aria-valuetext",
+            tr.info.duration < 1
+              ? fmt(t * 1000, 1) + " milliseconds"
+              : fmt(t, 3) + " seconds",
+          );
+        }
+        function completePlayback() {
+          if (!playback.tr) return;
+          playback.playing = false;
+          playback.q = 1;
+          renderAt(playback.tr, 1);
+          showMetrics(playback.tr);
+          $("statusText").textContent = playback.tr.info.withLoad
+            ? "Loaded FOC response complete"
+            : "No-load FOC response complete";
+          const first = !playback.completed;
+          playback.completed = true;
+          if (first && playback.unlock) {
+            maxTab = 4;
+            openTab(4);
+            $("loadSummary").textContent =
+              fmt(+$("loadNm").value, 4) +
+              " N·m at " +
+              fmt(+$("loadAtMs").value, 0) +
+              " ms · 80% TB default";
+          }
+        }
+        function startPlayback() {
+          if (!playback.tr || playback.q >= 1) return;
+          cancelAnimationFrame(raf);
+          playback.playing = true;
+          const base = performance.now() - playback.q * playback.dur;
+          function f(now) {
+            if (!playback.playing) return;
+            playback.q = Math.min(1, (now - base) / playback.dur);
+            renderAt(playback.tr, playback.q);
+            if (playback.q < 1) raf = requestAnimationFrame(f);
+            else completePlayback();
+          }
+          raf = requestAnimationFrame(f);
+        }
+        function animate(tr, unlock = false) {
+          cancelAnimationFrame(raf);
+          $("results").classList.add("visible");
+          setupCharts(tr);
+          playback = {
+            tr,
+            q: 0,
+            dur: Math.max(100, tr.info.duration * 1000),
+            playing: false,
+            resumeAfterScrub: false,
+            unlock,
+            completed: false,
+          };
+          renderAt(tr, 0);
+          startPlayback();
+        }
+        function run(load) {
+          try {
+            $("statusText").textContent = "Computing FOC response…";
+            last = simulate(load);
+            $("inputSummary").textContent =
+              `${mode === "step" ? "Step" : fmt(+$("rampMs").value, 0) + " ms ramp"} to ${fmt(+$("targetRpm").value, 0)} rpm`;
+            animate(last, !load);
+            $("sampleNote").textContent =
+              `${last.info.samples.toLocaleString()} RK4 samples · Ts = ${DT * 1e6} µs · cascaded PI FOC · no field weakening`;
+          } catch (e) {
+            $("statusText").textContent = e.message;
+            console.error(e);
+          }
+        }
+        const helps = {
+          1: {
+            title: "Motor model and parameter definitions",
+            body: '<h3>Model used by the simulator</h3><p>The averaged PMSM model is written in the rotor synchronous \\(dq\\) frame. Electrical speed is \\(\\omega_e=p\\omega_m\\), where \\(p\\) is the number of <b>pole pairs</b>.</p>\\[v_d=R_s i_d+L_d\\frac{di_d}{dt}-p\\omega_mL_qi_q\\]\\[v_q=R_s i_q+L_q\\frac{di_q}{dt}+p\\omega_m(L_di_d+\\psi_f)\\]<p>The mechanical subsystem is</p>\\[J\\frac{d\\omega_m}{dt}=T_e-T_L-B\\omega_m\\]\\[T_e=\\frac{3}{2}p\\left[\\psi_f i_q+(L_d-L_q)i_di_q\\right].\\]<h3>Entered and derived quantities</h3><table class="tech-table"><tr><th>Symbol</th><th>Meaning</th><th>Unit / use</th></tr><tr><td>\\(R_s,L_d,L_q\\)</td><td>Per-phase stator resistance and synchronous inductances</td><td>Ω, H</td></tr><tr><td>\\(\\psi_f\\)</td><td>Permanent-magnet flux linkage</td><td>Wb</td></tr><tr><td>\\(p\\)</td><td>Pole pairs; total poles are \\(2p\\)</td><td>dimensionless</td></tr><tr><td>\\(J,B\\)</td><td>Total shaft inertia and viscous friction</td><td>kg·m², N·m·s/rad</td></tr><tr><td>\\(V_{dc},I_{max}\\)</td><td>DC-link voltage and signed \\(i_q^*\\) limit</td><td>V, A</td></tr><tr><td>\\(\\omega_b,P_n\\)</td><td>Base mechanical speed and nominal power</td><td>rad/s, W</td></tr></table>\\[V_{max}=\\frac{V_{dc}}{\\sqrt{3}},\\qquad \\tau_d=\\frac{L_d}{R_s},\\quad \\tau_q=\\frac{L_q}{R_s},\\qquad T_B=\\frac{P_n}{\\omega_b}.\\]<div class="assumption"><b>Model scope.</b> The app uses an averaged inverter, ideal rotor position, fixed parameters, sinusoidal PMSM equations, and no field weakening. Switching ripple, dead time, sensor noise, iron loss and inverter voltage drops are not represented.</div>',
+          },
+          2: {
+            title: "First-shot PI gain calculation",
+            body: '<h3>1. Current-loop PI gains</h3><p>After the cross-coupling and back-EMF terms are compensated, each current axis is approximated by</p>\\[G_{i,d}(s)=\\frac{i_d(s)}{v_d(s)}=\\frac{1}{L_ds+R_s},\\qquad G_{i,q}(s)=\\frac{1}{L_qs+R_s}.\\]<p>Use a PI controller \\(C_i(s)=K_{p,i}+K_{i,i}/s\\). Place its zero on the electrical pole:</p>\\[\\frac{K_{i,d}}{K_{p,d}}=\\frac{R_s}{L_d},\\qquad \\frac{K_{i,q}}{K_{p,q}}=\\frac{R_s}{L_q}.\\]<p>With \\(\\omega_{ci}=2\\pi f_{ci}\\), pole-zero cancellation reduces the nominal closed loop to \\(\\omega_{ci}/(s+\\omega_{ci})\\). Therefore the app calculates</p>\\[\\boxed{K_{p,d}=L_d\\omega_{ci},\\quad K_{i,d}=R_s\\omega_{ci}}\\]\\[\\boxed{K_{p,q}=L_q\\omega_{ci},\\quad K_{i,q}=R_s\\omega_{ci}}.\\]<p class="eq-note">PI form: \\(v=K_pe+K_i\\int e\\,dt\\). Thus \\(K_p\\) has units V/A and \\(K_i\\) has units V/(A·s).</p><h3>2. Speed-loop PI gains</h3><p>Assume the inner current loop is much faster than the speed loop and tracks \\(i_q^*\\) ideally. Around \\(i_d=0\\),</p>\\[K_t=\\left.\\frac{\\partial T_e}{\\partial i_q}\\right|_{i_d=0}=\\frac{3}{2}p\\psi_f,\\qquad \\frac{\\omega_m(s)}{i_q^*(s)}=\\frac{K_t}{Js+B}.\\]<p>For \\(C_\\omega(s)=K_{p\\omega}+K_{i\\omega}/s\\), the closed-loop characteristic polynomial is</p>\\[Js^2+(B+K_tK_{p\\omega})s+K_tK_{i\\omega}.\\]<p>Match its coefficients to the selected second-order target \\(s^2+2\\zeta\\omega_ns+\\omega_n^2\\):</p>\\[\\boxed{K_{p\\omega}=\\frac{2\\zeta\\omega_nJ-B}{K_t}},\\qquad \\boxed{K_{i\\omega}=\\frac{\\omega_n^2J}{K_t}}.\\]<p>The implementation clips a negative calculated \\(K_{p\\omega}\\) to zero. The speed PI output is \\(i_q^*\\), so its gain units are A/(rad/s) and A/rad, respectively.</p><h3>3. Practical selection rules</h3><ul><li>Choose the current loop approximately 5–10 times faster than the speed loop: \\(f_{ci}\\gtrsim5f_n\\).</li><li>Keep \\(f_{ci}\\) well below the sampling frequency. Here \\(T_s=50\\,\\mu s\\), so \\(f_s=20\\,kHz\\); the default \\(f_{ci}=1\\,kHz=0.05f_s\\).</li><li>\\(\\zeta\\approx0.7\\) gives a faster underdamped target; \\(\\zeta=1\\) gives a critically damped nominal target.</li><li>If voltage or current saturates, the realized response will be slower than the linear second-order design.</li></ul><div class="assumption"><b>Implementation details.</b> The model includes \\(dq\\) decoupling/feedforward, voltage-vector saturation at \\(V_{dc}/\\sqrt3\\), speed-loop current limiting at \\(I_{max}\\), and integrator anti-windup. The displayed equations are the nominal first-shot design; all six gains remain editable for sensitivity studies.</div>',
+          },
+          3: {
+            title: "Step and ramp command definition",
+            body: '<h3>Reference trajectory</h3><p>For a step command beginning at \\(t_0\\),</p>\\[\\omega^*(t)=\\begin{cases}0,&t<t_0\\\\ \\omega_T,&t\\ge t_0.\\end{cases}\\]<p>For ramp duration \\(T_r\\), the command is continuous:</p>\\[\\omega^*(t)=\\begin{cases}0,&t<t_0\\\\ \\omega_T\\dfrac{t-t_0}{T_r},&t_0\\le t<t_0+T_r\\\\ \\omega_T,&t\\ge t_0+T_r.\\end{cases}\\]<p>The target entered in rpm is converted internally using \\(\\omega_T=2\\pi n_T/60\\). Plant integration uses fourth-order Runge–Kutta with \\(T_s=50\\,\\mu s\\). The precomputed samples are then revealed against elapsed wall time at 1× simulation time. Drag the simulation-time bar to inspect any sample; playback pauses while dragging and resumes from the selected time when released. After completion, dragging provides stationary manual inspection, while Replay restarts at \(t=0\).</p><h3>Reported metrics</h3><table class="tech-table"><tr><th>Metric</th><th>Definition</th></tr><tr><td>Rise time</td><td>First 10% to first 90% crossing of the final command.</td></tr><tr><td>Settling time</td><td>First time after which speed remains inside the ±2% band.</td></tr><tr><td>Overshoot</td><td>\\(100(\\omega_{max}-\\omega_T)/|\\omega_T|\\).</td></tr><tr><td>Peak \\(|i_q|\\)</td><td>Largest torque-producing current magnitude in the trace.</td></tr><tr><td>Peak voltage</td><td>\\(\\max\\sqrt{v_d^2+v_q^2}/V_{max}\\).</td></tr><tr><td>Final error</td><td>\\(100|\\omega_T-\\omega(t_f)|/|\\omega_T|\\).</td></tr></table><div class="assumption"><b>Interpretation.</b> A 100 ms ramp tests tracking of a feasible command trajectory. A zero-time step tests the combined controller and actuator limits and can immediately invoke current or voltage saturation.</div>',
+          },
+          4: {
+            title: "Mechanical load-step test",
+            body: '<h3>Disturbance definition</h3><p>The no-load command and all PI gains are retained. At the selected time \\(t_L\\), the opposing shaft torque becomes</p>\\[T_L(t)=\\begin{cases}0,&t<t_L\\\\ T_{L0},&t\\ge t_L.\\end{cases}\\qquad T_{L0,default}=0.8T_B.\\]<p>The base torque is calculated from nominal shaft power and base mechanical speed:</p>\\[T_B=\\frac{P_n}{\\omega_b}=\\frac{60P_n}{2\\pi n_b}.\\]<p>Immediately after the step, inertia limits the rate of speed change:</p>\\[\\left.\\frac{d\\omega_m}{dt}\\right|_{t_L^+}=\\frac{T_e-T_{L0}-B\\omega_m}{J}.\\]<p>The speed PI raises \\(i_q^*\\), and the current loop raises electromagnetic torque. For a surface PMSM at \\(i_d=0\\), the approximate steady current required by the load is</p>\\[i_{q,ss}\\approx\\frac{T_{L0}+B\\omega_m}{K_t}.\\]<h3>What to inspect</h3><ul><li>Speed dip and recovery time after \\(t_L\\).</li><li>Whether \\(|i_q|\\) reaches \\(I_{max}\\).</li><li>Whether voltage utilization reaches 1 pu.</li><li>Residual error caused by saturation or insufficient simulated recovery time.</li></ul><div class="assumption"><b>Operating envelope.</b> This app keeps \\(i_d^*=0\\) and does not implement field weakening. A target above base speed or a high-speed load may become voltage limited; in that case the motor may not sustain the requested operating point even when the PI gains are mathematically valid.</div>',
+          },
         };
+        document.querySelectorAll("[data-help]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              const h = helps[b.dataset.help];
+              $("helpTitle").textContent = h.title;
+              $("helpBody").innerHTML = h.body;
+              $("helpDialog").showModal();
+              if (window.MathJax?.typesetPromise)
+                MathJax.typesetPromise([$("helpBody")]).catch(console.error);
+            }),
+        );
+        $("closeHelp").onclick = () => $("helpDialog").close();
+        $("helpDialog").onclick = (e) => {
+          if (e.target === $("helpDialog")) $("helpDialog").close();
+        };
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => (t.onclick = () => openTab(+t.dataset.tab)));
+        sel.onchange = selectMotor;
+        $("acceptMotor").onclick = () => {
+          try {
+            readMotor();
+            const p = props(motor);
+            $("loadNm").value = fmt(0.8 * p.tb, 5);
+            $("motorSummary").textContent =
+              `${motor.key} · ${motor.name} · ${fmt(toRpm(motor.wb), 0)} rpm`;
+            calcGains();
+            maxTab = 2;
+            openTab(2);
+            $("statusText").textContent = "Review cascaded PI gains";
+          } catch (e) {
+            $("statusText").textContent = e.message;
+          }
+        };
+        $("calculateGains").onclick = calcGains;
+        $("acceptGains").onclick = () => {
+          try {
+            gains();
+            maxTab = Math.max(maxTab, 3);
+            openTab(3);
+            $("statusText").textContent = "Configure no-load command";
+          } catch (e) {
+            $("statusText").textContent = e.message;
+          }
+        };
+        $("stepMode").onclick = () => {
+          mode = "step";
+          $("stepMode").classList.add("active");
+          $("rampMode").classList.remove("active");
+          $("rampField").style.opacity = 0.4;
+          $("rampMs").disabled = true;
+        };
+        $("rampMode").onclick = () => {
+          mode = "ramp";
+          $("rampMode").classList.add("active");
+          $("stepMode").classList.remove("active");
+          $("rampField").style.opacity = 1;
+          $("rampMs").disabled = false;
+        };
+        $("runNoLoad").onclick = () => run(false);
+        $("runLoad").onclick = () => run(true);
+        $("backNoLoad").onclick = () => openTab(3);
+        const scrub = $("timeScrubber");
+        function beginScrub() {
+          if (!last || scrub.classList.contains("scrubbing")) return;
+          playback.resumeAfterScrub = playback.playing;
+          playback.playing = false;
+          cancelAnimationFrame(raf);
+          scrub.classList.add("scrubbing");
+        }
+        function endScrub() {
+          if (!scrub.classList.contains("scrubbing")) return;
+          scrub.classList.remove("scrubbing");
+          if (!last) return;
+          if (playback.q >= 1) completePlayback();
+          else if (playback.resumeAfterScrub) startPlayback();
+          playback.resumeAfterScrub = false;
+        }
+        scrub.addEventListener("pointerdown", beginScrub);
+        scrub.addEventListener("keydown", beginScrub);
+        scrub.addEventListener("input", () => {
+          if (!last) return;
+          if (!scrub.classList.contains("scrubbing")) beginScrub();
+          playback.q = +scrub.value / 1000;
+          renderAt(last, playback.q);
+          $("statusText").textContent =
+            "Manual inspection · release to continue";
+        });
+        addEventListener("pointerup", endScrub);
+        scrub.addEventListener("keyup", endScrub);
+        scrub.addEventListener("change", endScrub);
+        $("replay").onclick = () => last && animate(last, !last.info.withLoad);
+        addEventListener("resize", () => {
+          if (last) drawMotor(last, last.t.length - 1);
+          Object.values(charts).forEach((c) => c.resize());
+        });
+        selectMotor();
       });
     </script>
   </body>
