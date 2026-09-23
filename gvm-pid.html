@@ -9,6 +9,16 @@
       name="description"
       content="Interactive browser simulation of soft-radial PS-GVM direct speed control for PMSM motors M1-M19."
     />
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+        svg: { fontCache: "global" },
+      };
+    </script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+    ></script>
     <link
       rel="icon"
       type="image/svg+xml"
@@ -458,6 +468,23 @@
         color: var(--muted);
         margin: 13px 0 0;
       }
+      .gain-hint-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-top: 13px;
+      }
+      .gain-hint-row .gain-hint {
+        margin: 0;
+        flex: 1;
+      }
+      .gain-hint-row .step-actions {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        flex: 0 0 auto;
+      }
       .reset-link {
         border: 0;
         background: transparent;
@@ -547,64 +574,15 @@
       .progress {
         height: 7px;
         background: #3b4851;
+        overflow: hidden;
         flex: 1;
-        position: relative;
       }
       .progress i {
         display: block;
         height: 100%;
         width: 0;
         background: var(--amber);
-        pointer-events: none;
-      }
-      .progress input {
-        position: absolute;
-        left: 0;
-        top: -8px;
-        width: 100%;
-        height: 23px;
-        margin: 0;
-        appearance: none;
-        -webkit-appearance: none;
-        background: transparent;
-        cursor: ew-resize;
-      }
-      .progress input::-webkit-slider-runnable-track {
-        height: 7px;
-        background: transparent;
-      }
-      .progress input::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 15px;
-        height: 19px;
-        margin-top: -6px;
-        border: 2px solid var(--amber);
-        border-radius: 1px;
-        background: #fff;
-        box-shadow: 0 0 0 1px #151b20;
-      }
-      .progress input::-moz-range-track {
-        height: 7px;
-        background: transparent;
-        border: 0;
-      }
-      .progress input::-moz-range-thumb {
-        width: 13px;
-        height: 17px;
-        border: 2px solid var(--amber);
-        border-radius: 1px;
-        background: #fff;
-        box-shadow: 0 0 0 1px #151b20;
-      }
-      .progress input:focus-visible {
-        outline: 2px solid #fff;
-        outline-offset: 5px;
-      }
-      .progress input.scrubbing::-webkit-slider-thumb {
-        background: var(--amber);
-      }
-      .progress input.scrubbing::-moz-range-thumb {
-        background: var(--amber);
+        transition: width 0.03s linear;
       }
       .runbar .btn {
         min-height: 32px;
@@ -659,37 +637,16 @@
         color: var(--muted);
         margin-left: 4px;
       }
-      .visual-grid {
-        display: grid;
-        grid-template-columns: 320px minmax(0, 1fr);
+      .plots {
+        display: flex;
+        flex-direction: column;
         gap: 9px;
-        align-items: start;
       }
-      .motor-card,
       .plot-card {
         background: var(--paper);
         border: 1px solid #85919a;
         padding: 0;
         box-shadow: var(--shadow);
-      }
-      .motor-card {
-        grid-row: span 2;
-      }
-      .motor-wrap {
-        height: 570px;
-        position: relative;
-        background: #fbfcfc;
-      }
-      .motor-wrap canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
-      .plots {
-        display: flex;
-        flex-direction: column;
-        gap: 9px;
-        min-width: 0;
       }
       .plot-head {
         display: flex;
@@ -710,7 +667,6 @@
         color: #3f4f5a;
         font-size: 13px;
         font-weight: 600;
-        flex-wrap: wrap;
       }
       .key {
         display: inline-flex;
@@ -811,6 +767,29 @@
         margin: 8px 0;
         overflow: auto;
       }
+      .tech-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #aeb9c0;
+        margin: 8px 0 18px;
+        font-size: 14px;
+      }
+      .tech-table th {
+        background: #dfe6ea;
+        text-align: left;
+        color: #243b4a;
+        padding: 8px;
+        border: 1px solid #aeb9c0;
+      }
+      .tech-table td {
+        padding: 8px;
+        border: 1px solid #c4cdd2;
+        vertical-align: top;
+      }
+      .tech-table td:first-child {
+        font-weight: 700;
+        color: #304957;
+      }
       .callout {
         border-left: 4px solid var(--cyan);
         background: #eef7f8;
@@ -838,17 +817,16 @@
         .select-row {
           grid-template-columns: 1fr;
         }
-        .visual-grid {
-          grid-template-columns: 1fr;
-        }
-        .motor-card {
-          grid-row: auto;
-        }
-        .motor-wrap {
-          height: 330px;
-        }
         .plot-wrap {
           height: 280px;
+        }
+        .gain-hint-row {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .gain-hint-row .step-actions {
+          width: 100%;
+          justify-content: flex-end;
         }
       }
       @media (max-width: 560px) {
@@ -900,9 +878,6 @@
         }
         .metric:nth-child(even) {
           border-right: 0;
-        }
-        .motor-wrap {
-          height: 260px;
         }
         .plot-wrap {
           height: 245px;
@@ -965,7 +940,7 @@
           disabled
         >
           <span class="tab-code">MODULE 02</span
-          ><span class="tab-title">Gain commissioning</span></button
+          ><span class="tab-title">d-axis current loop</span></button
         ><button
           class="step-tab"
           data-tab="3"
@@ -974,7 +949,7 @@
           disabled
         >
           <span class="tab-code">MODULE 03</span
-          ><span class="tab-title">No-load validation</span></button
+          ><span class="tab-title">GVM + no-load test</span></button
         ><button
           class="step-tab"
           data-tab="4"
@@ -1015,12 +990,91 @@
 
         <section class="step-card locked" data-step="2" role="tabpanel">
           <header class="step-summary">
-            <span class="section-code">GAIN SET</span>
+            <span class="section-code">CURRENT LOOP</span>
             <div class="summary-copy">
-              <h3>Calculate first-shot gain vectors</h3>
-              <p id="gainSummary">Waiting for motor parameters</p>
+              <h3>Design the (i_d) current regulator</h3>
+              <p id="idGainSummary">
+                Set the current-loop bandwidth before speed control
+              </p>
             </div>
             <button class="help-btn" data-help="2">Technical help</button>
+          </header>
+          <div class="step-body">
+            <div class="formula-strip" id="idDerivedStrip"></div>
+            <table class="gain-table">
+              <thead>
+                <tr>
+                  <th>Loop</th>
+                  <th>Kp</th>
+                  <th>Ki</th>
+                  <th>Bandwidth</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><i>i</i><sub>d</sub> PI</td>
+                  <td><input id="idKp" type="number" step="any" /></td>
+                  <td><input id="idKi" type="number" step="any" /></td>
+                  <td>
+                    <div class="unit-field">
+                      <input id="idBw" type="number" step="any" min="1" /><span
+                        >Hz</span
+                      >
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="gain-hint">
+              The <i>i</i><sub>d</sub> loop regulates the flux-producing
+              current. For the surface-PMSM assumption, the first-shot target is
+              <i>i</i><sub>d</sub><sup>*</sup> = 0; the regulator still provides
+              the electrical damping needed by the dq plant.
+            </p>
+            <div class="step-actions">
+              <button class="btn" id="resetIdGains">
+                Recalculate <i>i</i><sub>d</sub> gains</button
+              ><button class="btn" id="runIdResponse">
+                Run <i>i</i><sub>d</sub> response</button
+              ><button class="btn primary" id="toGvm">
+                Accept current-loop gains
+              </button>
+            </div>
+            <div class="results" id="idTestResults">
+              <article class="plot-card">
+                <div class="plot-head">
+                  <h3>d-axis current-loop validation</h3>
+                  <div class="legend">
+                    <span class="key" style="color: var(--pink)"
+                      ><i class="swatch"></i>i<sub>d</sub></span
+                    ><span class="key" style="color: #46545e"
+                      ><i class="swatch"></i>i<sub>d</sub>*</span
+                    >
+                  </div>
+                </div>
+                <div class="plot-wrap">
+                  <canvas id="idResponsePlot"></canvas>
+                  <div class="tip"></div>
+                </div>
+              </article>
+              <div class="footer-note">
+                First-order dq electrical validation using the entered <i>K</i
+                ><sub>p,d</sub>, <i>K</i><sub>i,d</sub>, and bandwidth.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="step-card locked" data-step="3" role="tabpanel">
+          <header class="step-summary">
+            <span class="section-code">GVM + NL TEST</span>
+            <div class="summary-copy">
+              <h3>Commission GVM gains and validate no-load response</h3>
+              <p id="inputSummary">
+                Review Gmotion/Gss before running the speed test
+              </p>
+            </div>
+            <button class="help-btn" data-help="3">Technical help</button>
           </header>
           <div class="step-body">
             <div class="formula-strip" id="derivedStrip"></div>
@@ -1069,28 +1123,17 @@
                 </tr>
               </tbody>
             </table>
-            <p class="gain-hint">
-              Edit a gain directly, or scale the complete endpoint while
-              preserving its internal ratios.
-            </p>
-            <div class="step-actions">
-              <button class="reset-link" id="resetGains">
-                Recalculate first-shot values</button
-              ><button class="btn primary" id="toInput">Accept gains</button>
+            <div class="gain-hint-row">
+              <p class="gain-hint">
+                Edit the speed-gain vectors or apply a vector scale. Accept the
+                GVM design before running the no-load test.
+              </p>
+              <div class="step-actions">
+                <button class="btn" id="resetGains">
+                  Recalculate GVM first-shot values</button
+                ><button class="btn" id="acceptGvm">Accept GVM gains</button>
+              </div>
             </div>
-          </div>
-        </section>
-
-        <section class="step-card locked" data-step="3" role="tabpanel">
-          <header class="step-summary">
-            <span class="section-code">NL TEST</span>
-            <div class="summary-copy">
-              <h3>Select input and run no-load response</h3>
-              <p id="inputSummary">Step or ramp speed reference</p>
-            </div>
-            <button class="help-btn" data-help="3">Technical help</button>
-          </header>
-          <div class="step-body">
             <div class="input-grid">
               <div class="field">
                 <label>Input type</label>
@@ -1136,8 +1179,10 @@
               </div>
             </div>
             <div class="step-actions">
-              <button class="btn teal" id="runNoLoad">
-                Run no-load response
+              <button class="btn teal" id="runNoLoad" disabled>
+                Run no-load response</button
+              ><button class="btn" id="acceptNoLoad" disabled>
+                Accept no-load result
               </button>
             </div>
           </div>
@@ -1187,7 +1232,10 @@
             </div>
             <div class="step-actions">
               <button class="btn" id="keepNoLoad">Keep no-load result</button
-              ><button class="btn teal" id="runLoad">Run with load</button>
+              ><button class="btn teal" id="runLoad">Run with load</button
+              ><button class="btn" id="acceptLoad" disabled>
+                Accept load result
+              </button>
             </div>
           </div>
         </section>
@@ -1197,18 +1245,7 @@
         <div class="runbar">
           <span class="timebase">SIMULATION TIME · 1×</span
           ><strong id="clock">t = 0.0 ms</strong>
-          <div class="progress" title="Drag to inspect simulation time">
-            <i id="progressFill"></i
-            ><input
-              id="timeScrubber"
-              type="range"
-              min="0"
-              max="1000"
-              value="0"
-              step="1"
-              aria-label="Simulation time"
-            />
-          </div>
+          <div class="progress"><i id="progressFill"></i></div>
           <button class="btn" id="replay">Replay</button>
         </div>
         <div class="metrics">
@@ -1235,104 +1272,107 @@
             <span>Final error</span><strong id="mErr">—</strong><small>%</small>
           </div>
         </div>
-        <div class="visual-grid">
-          <article class="motor-card">
+        <div class="plots">
+          <article class="plot-card">
             <div class="plot-head">
-              <h3>Rotor and dq quantities</h3>
+              <h3>Speed</h3>
               <div class="legend">
-                <span class="key" style="color: var(--pink)"
-                  ><i class="swatch"></i>d axis / id</span
-                ><span class="key" style="color: var(--amber)"
-                  ><i class="swatch"></i>q axis / iq</span
+                <span class="key" style="color: var(--blue)"
+                  ><i class="swatch"></i>ω</span
+                ><span class="key" style="color: #7c898e"
+                  ><i class="swatch"></i>ω*</span
                 >
               </div>
             </div>
-            <div class="motor-wrap"><canvas id="rotorCanvas"></canvas></div>
+            <div class="plot-wrap">
+              <canvas id="speedPlot"></canvas>
+              <div class="tip"></div>
+            </div>
           </article>
-          <div class="plots">
-            <article class="plot-card">
-              <div class="plot-head">
-                <h3>Speed</h3>
-                <div class="legend">
-                  <span class="key" style="color: var(--blue)"
-                    ><i class="swatch"></i>ω</span
-                  ><span class="key" style="color: #7c898e"
-                    ><i class="swatch"></i>ω*</span
-                  >
-                </div>
+          <article class="plot-card">
+            <div class="plot-head">
+              <h3>Coordinator activity</h3>
+              <div class="legend">
+                <span class="key" style="color: var(--teal)"
+                  ><i class="swatch"></i>α</span
+                ><span class="key" style="color: #89969c"
+                  ><i class="swatch"></i>load pu</span
+                >
               </div>
-              <div class="plot-wrap">
-                <canvas id="speedPlot"></canvas>
-                <div class="tip"></div>
+            </div>
+            <div class="plot-wrap">
+              <canvas id="alphaPlot"></canvas>
+              <div class="tip"></div>
+            </div>
+          </article>
+          <article class="plot-card">
+            <div class="plot-head">
+              <h3>d–q currents</h3>
+              <div class="legend">
+                <span class="key" style="color: var(--pink)"
+                  ><i class="swatch"></i>id</span
+                ><span class="key" style="color: var(--amber)"
+                  ><i class="swatch"></i>iq</span
+                >
               </div>
-            </article>
-            <article class="plot-card">
-              <div class="plot-head">
-                <h3>Coordinator activity</h3>
-                <div class="legend">
-                  <span class="key" style="color: var(--teal)"
-                    ><i class="swatch"></i>α</span
-                  ><span class="key" style="color: #89969c"
-                    ><i class="swatch"></i>load pu</span
-                  >
-                </div>
+            </div>
+            <div class="plot-wrap">
+              <canvas id="currentPlot"></canvas>
+              <div class="tip"></div>
+            </div>
+          </article>
+          <article class="plot-card">
+            <div class="plot-head">
+              <h3>Phase currents</h3>
+              <div class="legend">
+                <span class="key" style="color: #00629b"
+                  ><i class="swatch"></i>i<sub>a</sub></span
+                ><span class="key" style="color: #a52052"
+                  ><i class="swatch"></i>i<sub>b</sub></span
+                ><span class="key" style="color: #008f95"
+                  ><i class="swatch"></i>i<sub>c</sub></span
+                >
               </div>
-              <div class="plot-wrap">
-                <canvas id="alphaPlot"></canvas>
-                <div class="tip"></div>
+            </div>
+            <div class="plot-wrap">
+              <canvas id="phaseCurrentPlot"></canvas>
+              <div class="tip"></div>
+            </div>
+          </article>
+          <article class="plot-card">
+            <div class="plot-head">
+              <h3>Electromagnetic and load torque</h3>
+              <div class="legend">
+                <span class="key" style="color: #d97800"
+                  ><i class="swatch"></i>T<sub>e</sub></span
+                ><span class="key" style="color: #737f87"
+                  ><i class="swatch"></i>T<sub>L</sub></span
+                >
               </div>
-            </article>
-            <article class="plot-card">
-              <div class="plot-head">
-                <h3>d–q currents</h3>
-                <div class="legend">
-                  <span class="key" style="color: var(--pink)"
-                    ><i class="swatch"></i>id</span
-                  ><span class="key" style="color: var(--amber)"
-                    ><i class="swatch"></i>iq</span
-                  >
-                </div>
+            </div>
+            <div class="plot-wrap">
+              <canvas id="torquePlot"></canvas>
+              <div class="tip"></div>
+            </div>
+          </article>
+          <article class="plot-card">
+            <div class="plot-head">
+              <h3>d–q voltage headroom</h3>
+              <div class="legend">
+                <span class="key" style="color: #00629b"
+                  ><i class="swatch"></i>v<sub>d</sub></span
+                ><span class="key" style="color: #a52052"
+                  ><i class="swatch"></i>v<sub>q</sub></span
+                ><span class="key" style="color: #737f87"
+                  ><i class="swatch"></i>|v|</span
+                >
               </div>
-              <div class="plot-wrap">
-                <canvas id="currentPlot"></canvas>
-                <div class="tip"></div>
-              </div>
-            </article>
-            <article class="plot-card">
-              <div class="plot-head">
-                <h3>Phase currents</h3>
-                <div class="legend">
-                  <span class="key" style="color: var(--blue)"
-                    ><i class="swatch"></i>ia</span
-                  ><span class="key" style="color: var(--amber)"
-                    ><i class="swatch"></i>ib</span
-                  ><span class="key" style="color: var(--ok)"
-                    ><i class="swatch"></i>ic</span
-                  >
-                </div>
-              </div>
-              <div class="plot-wrap">
-                <canvas id="phasePlot"></canvas>
-                <div class="tip"></div>
-              </div>
-            </article>
-            <article class="plot-card">
-              <div class="plot-head">
-                <h3>Electromagnetic and load torque</h3>
-                <div class="legend">
-                  <span class="key" style="color: var(--teal)"
-                    ><i class="swatch"></i>Te</span
-                  ><span class="key" style="color: #6941c6"
-                    ><i class="swatch"></i>TL</span
-                  >
-                </div>
-              </div>
-              <div class="plot-wrap">
-                <canvas id="torquePlot"></canvas>
-                <div class="tip"></div>
-              </div>
-            </article>
-          </div>
+            </div>
+            <div class="plot-wrap">
+              <canvas id="dqVoltagePlot"></canvas>
+              <div class="tip"></div>
+            </div>
+          </article>
         </div>
         <div class="footer-note" id="sampleNote">
           Averaged dq model · predictive current constraint · no field weakening
@@ -1685,18 +1725,11 @@
       let mode = "ramp",
         activeMotor = null,
         lastResult = null,
+        idTestResult = null,
+        resultStep = 0,
         currentVisible = 0,
         animationId = 0,
-        maxUnlocked = 1,
-        playback = {
-          data: null,
-          q: 0,
-          duration: 0,
-          playing: false,
-          resumeAfterScrub: false,
-          unlock: false,
-          completed: false,
-        };
+        maxUnlocked = 1;
       const $ = (id) => document.getElementById(id),
         motorSel = $("motor");
       motors.forEach((m, i) =>
@@ -1719,8 +1752,14 @@
           dt = C.loadRatio * p.tb,
           kpS = (m.rs / p.kt) * (dt / C.pDroop),
           kiS = kpS / C.tiS,
-          kdS = C.stiffDamp * p.tau * kpS;
-        return { raw: [kpM, 0, kdM, kpS, kiS, kdS], vhead };
+          kdS = C.stiffDamp * p.tau * kpS,
+          wc = 2 * PI * C.idBw;
+        return {
+          raw: [kpM, 0, kdM, kpS, kiS, kdS],
+          id: [wc * m.ld, wc * m.rs],
+          bw: C.idBw,
+          vhead,
+        };
       }
       const fmt = (x, d = 4) => {
         if (!Number.isFinite(x)) return "—";
@@ -1783,6 +1822,8 @@
       }
       function selectMotor() {
         activeMotor = { ...motors[+motorSel.value] };
+        idTestResult = null;
+        $("idTestResults").classList.remove("visible");
         motorFields(activeMotor);
         const p = props(activeMotor);
         $("targetRpm").value = fmt(toRpm(activeMotor.wb), 2);
@@ -1801,10 +1842,38 @@
         ids.forEach((id, i) => ($(id).value = fmt(g.raw[i], 8)));
         $("gmScale").value = 1;
         $("gsScale").value = 1;
+        $("idKp").value = fmt(g.id[0], 8);
+        $("idKi").value = fmt(g.id[1], 8);
+        $("idBw").value = fmt(g.bw, 1);
         const p = props(activeMotor);
         $("derivedStrip").innerHTML =
           `<code>k<sub>t</sub> = ${fmt(p.kt, 5)} N·m/A</code><code>τ<sub>e</sub> = ${fmt(p.tau * 1000, 4)} ms</code><code>V<sub>head</sub> = ${fmt(g.vhead, 3)} V</code><code>T<sub>B</sub> = ${fmt(p.tb, 4)} N·m</code>`;
+        $("idDerivedStrip").innerHTML =
+          `<code>ω<sub>ci</sub> = 2π·${fmt(g.bw, 0)} rad/s</code><code>K<sub>pd</sub> = ω<sub>ci</sub>L<sub>d</sub> = ${fmt(g.id[0], 5)}</code><code>K<sub>id</sub> = ω<sub>ci</sub>R<sub>s</sub> = ${fmt(g.id[1], 5)}</code>`;
         updateGainSummary();
+        updateIdGainSummary();
+      }
+      function readIdGains() {
+        const kp = Number($("idKp").value),
+          ki = Number($("idKi").value),
+          bw = Number($("idBw").value);
+        if (
+          !Number.isFinite(kp) ||
+          !Number.isFinite(ki) ||
+          !Number.isFinite(bw) ||
+          kp < 0 ||
+          ki < 0 ||
+          bw <= 0
+        )
+          throw new Error("Invalid id current-loop gain");
+        return { kp, ki, bw };
+      }
+      function updateIdGainSummary() {
+        try {
+          const g = readIdGains();
+          $("idGainSummary").textContent =
+            `id PI · ${fmt(g.bw, 0)} Hz · Kp ${fmt(g.kp, 4)} · Ki ${fmt(g.ki, 4)}`;
+        } catch {}
       }
       function readGainVectors() {
         const get = (id) => {
@@ -1845,15 +1914,87 @@
           tab.setAttribute("aria-selected", active);
           tab.tabIndex = active ? 0 : -1;
         });
+        $("results").classList.toggle(
+          "visible",
+          !!lastResult && resultStep === n,
+        );
+        $("idTestResults").classList.toggle(
+          "visible",
+          !!idTestResult && n === 2,
+        );
       }
       function hermiteSat(z) {
         const u = clamp(z / 1.5, -1, 1);
         return 1.5 * u - 0.5 * u * u * u;
       }
+      function simulateIdResponse() {
+        const g = readIdGains(),
+          m = { ...activeMotor },
+          p = props(m),
+          simT = 0.12,
+          n = Math.floor(simT / TS) + 1,
+          refVal = 0.1 * m.imax,
+          t = new Float64Array(n),
+          ref = new Float64Array(n),
+          id = new Float64Array(n),
+          vd = new Float64Array(n);
+        let x = 0,
+          int = 0;
+        for (let k = 0; k < n; k++) {
+          const time = k * TS,
+            r = time >= 0.005 ? refVal : 0,
+            e = r - x,
+            raw = g.kp * e + int,
+            v = clamp(raw, -p.vmax, p.vmax),
+            dx = (v - m.rs * x) / m.ld;
+          x += TS * dx;
+          if (Math.abs(raw - v) < 1e-9 || Math.sign(e) !== Math.sign(raw))
+            int = clamp(int + g.ki * e * TS, -p.vmax, p.vmax);
+          t[k] = time;
+          ref[k] = r;
+          id[k] = x;
+          vd[k] = v;
+        }
+        return { t, ref, id, vd, simT };
+      }
+      function runIdResponse() {
+        try {
+          const d = simulateIdResponse(),
+            yb = bounds([
+              { data: Array.from(d.id) },
+              { data: Array.from(d.ref) },
+            ]);
+          idTestResult = d;
+          $("idTestResults").classList.add("visible");
+          linePlot(
+            "idResponsePlot",
+            Array.from(d.t),
+            [
+              { name: "id", data: Array.from(d.id), color: colors.pink },
+              {
+                name: "id*",
+                data: Array.from(d.ref),
+                color: colors.ref,
+                dash: [7, 5],
+                width: 1.6,
+              },
+            ],
+            "Current (A)",
+            d.simT,
+            yb,
+            d.t[d.t.length - 1],
+          );
+          $("statusText").textContent = "d-axis current response complete";
+        } catch (err) {
+          $("statusText").textContent = err.message;
+          console.error(err);
+        }
+      }
       function simulate(withLoad) {
         const m = { ...activeMotor },
           p = props(m),
           gv = readGainVectors(),
+          idg = readIdGains(),
           gm = gv.gm,
           gs = gv.gs;
         const target = rpm(Number($("targetRpm").value) || 0),
@@ -1874,18 +2015,21 @@
             w: new Float64Array(n),
             id: new Float64Array(n),
             iq: new Float64Array(n),
+            ia: new Float64Array(n),
+            ib: new Float64Array(n),
+            ic: new Float64Array(n),
+            te: new Float64Array(n),
+            vd: new Float64Array(n),
+            vq: new Float64Array(n),
             alpha: new Float64Array(n),
             z1: new Float64Array(n),
             z2: new Float64Array(n),
             load: new Float64Array(n),
             vmag: new Float64Array(n),
-            torque: new Float64Array(n),
-            theta: new Float64Array(n),
           };
         let w = 0,
           id = 0,
           iq = 0,
-          theta = 0,
           intq = 0,
           intd = 0,
           wOld = 0,
@@ -1893,10 +2037,10 @@
           deF = 0,
           accF = 0,
           iqOld = 0,
-          diqF = 0;
-        const wc = 2 * PI * C.idBw,
-          kpd = wc * m.ld,
-          kid = wc * m.rs;
+          diqF = 0,
+          theta = 0;
+        const kpd = idg.kp,
+          kid = idg.ki;
         for (let k = 0; k < n; k++) {
           const t = k * TS,
             ref =
@@ -1970,19 +2114,29 @@
           iq += TS * di;
           const torque = 1.5 * m.p * (m.psi * iq + (m.ld - m.lq) * id * iq);
           w += (TS * (torque - load - m.B * w)) / m.J;
-          theta = (theta + w * TS) % (2 * PI);
+          theta += m.p * w * TS;
+          const ca = Math.cos(theta),
+            sa = Math.sin(theta),
+            cb = Math.cos(theta - (2 * PI) / 3),
+            sb = Math.sin(theta - (2 * PI) / 3),
+            cc = Math.cos(theta + (2 * PI) / 3),
+            sc = Math.sin(theta + (2 * PI) / 3);
           out.t[k] = t;
           out.ref[k] = ref;
           out.w[k] = w;
           out.id[k] = id;
           out.iq[k] = iq;
+          out.ia[k] = id * ca - iq * sa;
+          out.ib[k] = id * cb - iq * sb;
+          out.ic[k] = id * cc - iq * sc;
+          out.te[k] = torque;
+          out.vd[k] = vd;
+          out.vq[k] = vq;
           out.alpha[k] = alpha;
           out.z1[k] = z1;
           out.z2[k] = z2;
           out.load[k] = load;
           out.vmag[k] = Math.hypot(vd, vq);
-          out.torque[k] = torque;
-          out.theta[k] = theta;
           if (!Number.isFinite(w) || Math.abs(w) > 1e7)
             throw new Error(
               "Numerical divergence: try smaller gains or a shorter simulation.",
@@ -2069,9 +2223,8 @@
         pink: "#a52052",
         amber: "#d97800",
         teal: "#008f95",
-        green: "#23724c",
-        violet: "#6941c6",
         load: "#737f87",
+        green: "#2d7b55",
       };
       function bounds(series, includeZero = true) {
         let mn = Infinity,
@@ -2205,148 +2358,54 @@
         };
         canvas.onpointerleave = () => (tip.style.display = "none");
       }
-      function drawMotor(d, index) {
-        const canvas = $("rotorCanvas"),
-          r = canvas.getBoundingClientRect(),
-          dpr = devicePixelRatio || 1,
-          w = r.width,
-          h = r.height,
-          m = d.info.m;
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
-        const ctx = canvas.getContext("2d");
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, w, h);
-        const wide = w > 650,
-          x = wide ? w * 0.31 : w * 0.5,
-          y = h * 0.48,
-          R = Math.min(wide ? w * 0.18 : w * 0.3, h * 0.37),
-          rr = R * 0.64,
-          th = d.theta[index] % (2 * PI),
-          qa = PI / (2 * m.p);
-        ctx.strokeStyle = "#34434d";
-        ctx.lineWidth = 12;
-        ctx.beginPath();
-        ctx.arc(x, y, R, 0, 2 * PI);
-        ctx.stroke();
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(th);
-        ctx.fillStyle = "#c7cdd1";
-        ctx.beginPath();
-        ctx.arc(0, 0, rr, 0, 2 * PI);
-        ctx.fill();
-        const poles = 2 * m.p,
-          seg = (2 * PI) / poles;
-        for (let k = 0; k < poles; k++) {
-          ctx.fillStyle = k % 2 ? colors.blue : "#b83232";
-          ctx.beginPath();
-          ctx.arc(0, 0, rr, k * seg + 0.08 * seg, (k + 1) * seg - 0.08 * seg);
-          ctx.arc(
-            0,
-            0,
-            rr * 0.81,
-            (k + 1) * seg - 0.08 * seg,
-            k * seg + 0.08 * seg,
-            true,
-          );
-          ctx.fill();
-        }
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = colors.pink;
-        ctx.beginPath();
-        ctx.moveTo(-R, 0);
-        ctx.lineTo(R, 0);
-        ctx.stroke();
-        ctx.strokeStyle = colors.amber;
-        ctx.beginPath();
-        ctx.moveTo(-R * Math.cos(qa), -R * Math.sin(qa));
-        ctx.lineTo(R * Math.cos(qa), R * Math.sin(qa));
-        ctx.stroke();
-        const scale = (R * 0.8) / Math.max(m.imax, 1);
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = colors.pink;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(d.id[index] * scale, 0);
-        ctx.stroke();
-        ctx.strokeStyle = colors.amber;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(
-          d.iq[index] * scale * Math.cos(qa),
-          d.iq[index] * scale * Math.sin(qa),
-        );
-        ctx.stroke();
-        ctx.restore();
-        const tx = wide ? w * 0.61 : 14,
-          ty = wide ? 70 : h - 82;
-        ctx.fillStyle = "#17212a";
-        ctx.font = "600 19px Cambria, Georgia, serif";
-        ctx.fillText(
-          m.key + " · " + fmt(toRpm(d.w[index]), 1) + " rpm",
-          tx,
-          ty,
-        );
-        ctx.font = "13px Cascadia Mono, Consolas, monospace";
-        ctx.fillStyle = "#56636d";
-        ctx.fillText("id = " + fmt(d.id[index], 3) + " A", tx, ty + 28);
-        ctx.fillText("iq = " + fmt(d.iq[index], 3) + " A", tx, ty + 50);
-        ctx.fillText("Te = " + fmt(d.torque[index], 3) + " N·m", tx, ty + 72);
-        ctx.fillStyle = colors.teal;
-        ctx.fillText("alpha = " + fmt(d.alpha[index], 3), tx, ty + 94);
-      }
       function preparePlots(d) {
-        const theta = Array.from(d.theta),
-          id = Array.from(d.id),
-          iq = Array.from(d.iq),
-          ia = new Array(d.t.length),
-          ib = new Array(d.t.length),
-          ic = new Array(d.t.length),
-          s3 = Math.sqrt(3) / 2;
-        for (let i = 0; i < ia.length; i++) {
-          const a = d.info.m.p * theta[i],
-            ca = Math.cos(a),
-            sa = Math.sin(a),
-            ial = id[i] * ca - iq[i] * sa,
-            ibe = id[i] * sa + iq[i] * ca;
-          ia[i] = ial;
-          ib[i] = -0.5 * ial + s3 * ibe;
-          ic[i] = -0.5 * ial - s3 * ibe;
-        }
         d.plot = {
           t: Array.from(d.t),
           speed: Array.from(d.w, toRpm),
           ref: Array.from(d.ref, toRpm),
-          id,
-          iq,
+          id: Array.from(d.id),
+          iq: Array.from(d.iq),
+          ia: Array.from(d.ia),
+          ib: Array.from(d.ib),
+          ic: Array.from(d.ic),
+          te: Array.from(d.te),
+          load: Array.from(d.load),
+          vd: Array.from(d.vd),
+          vq: Array.from(d.vq),
+          vmag: Array.from(d.vmag),
           alpha: Array.from(d.alpha),
-          load: Array.from(d.load, (x) => x / d.info.p.tb),
-          loadNm: Array.from(d.load),
-          torque: Array.from(d.torque),
-          ia,
-          ib,
-          ic,
+          loadPu: Array.from(d.load, (x) => x / d.info.p.tb),
         };
         d.plot.speedBounds = bounds([
           { data: d.plot.speed },
           { data: d.plot.ref },
         ]);
-        d.plot.currentBounds = bounds([{ data: id }, { data: iq }]);
-        d.plot.phaseBounds = bounds([{ data: ia }, { data: ib }, { data: ic }]);
+        d.plot.currentBounds = bounds([
+          { data: d.plot.id },
+          { data: d.plot.iq },
+        ]);
+        d.plot.phaseBounds = bounds([
+          { data: d.plot.ia },
+          { data: d.plot.ib },
+          { data: d.plot.ic },
+        ]);
         d.plot.torqueBounds = bounds([
-          { data: d.plot.torque },
-          { data: d.plot.loadNm },
+          { data: d.plot.te },
+          { data: d.plot.load },
+        ]);
+        d.plot.voltageBounds = bounds([
+          { data: d.plot.vd },
+          { data: d.plot.vq },
+          { data: d.plot.vmag },
         ]);
         d.plot.alphaBounds = [-0.08, 1.08];
       }
       function renderPlots(d, end) {
         const q = d.plot,
-          n = clamp(Math.floor(end), 2, q.t.length),
+          n = clamp(end, 2, q.t.length),
           cut = (a) => a.slice(0, n),
           t = cut(q.t),
-          cursor = t[t.length - 1],
-          fraction = cursor / d.info.simT;
+          cursor = t[t.length - 1];
         linePlot(
           "speedPlot",
           t,
@@ -2372,7 +2431,7 @@
             { name: "α", data: cut(q.alpha), color: colors.teal },
             {
               name: "load / TB",
-              data: cut(q.load),
+              data: cut(q.loadPu),
               color: colors.load,
               dash: [6, 4],
               width: 1.5,
@@ -2396,12 +2455,12 @@
           cursor,
         );
         linePlot(
-          "phasePlot",
+          "phaseCurrentPlot",
           t,
           [
             { name: "ia", data: cut(q.ia), color: colors.blue },
-            { name: "ib", data: cut(q.ib), color: colors.amber },
-            { name: "ic", data: cut(q.ic), color: colors.green },
+            { name: "ib", data: cut(q.ib), color: colors.pink },
+            { name: "ic", data: cut(q.ic), color: colors.teal },
           ],
           "Phase current (A)",
           d.info.simT,
@@ -2412,12 +2471,12 @@
           "torquePlot",
           t,
           [
-            { name: "Te", data: cut(q.torque), color: colors.teal },
+            { name: "Te", data: cut(q.te), color: colors.amber },
             {
               name: "TL",
-              data: cut(q.loadNm),
-              color: colors.violet,
-              dash: [7, 5],
+              data: cut(q.load),
+              color: colors.load,
+              dash: [6, 4],
               width: 1.6,
             },
           ],
@@ -2426,21 +2485,32 @@
           q.torqueBounds,
           cursor,
         );
-        drawMotor(d, n - 1);
+        linePlot(
+          "dqVoltagePlot",
+          t,
+          [
+            { name: "vd", data: cut(q.vd), color: colors.blue },
+            { name: "vq", data: cut(q.vq), color: colors.pink },
+            {
+              name: "|v|",
+              data: cut(q.vmag),
+              color: colors.load,
+              dash: [5, 4],
+              width: 1.6,
+            },
+          ],
+          "Voltage (V)",
+          d.info.simT,
+          q.voltageBounds,
+          cursor,
+        );
         $("clock").textContent =
           d.info.simT >= 1
             ? `t = ${fmt(cursor, 3)} s`
             : `t = ${fmt(cursor * 1000, 1)} ms`;
-        $("progressFill").style.width = `${fraction * 100}%`;
-        $("timeScrubber").value = Math.round(fraction * 1000);
-        $("timeScrubber").setAttribute(
-          "aria-valuetext",
-          d.info.simT >= 1
-            ? fmt(cursor, 3) + " seconds"
-            : fmt(cursor * 1000, 1) + " milliseconds",
-        );
+        $("progressFill").style.width = `${(cursor / d.info.simT) * 100}%`;
         $("sampleNote").textContent =
-          `${d.info.n.toLocaleString()} samples · Ts = ${fmt(TS * 1e6, 0)} µs · averaged dq plant · predictive current constraint · no field weakening`;
+          `${d.info.n.toLocaleString()} samples · Ts = ${fmt(TS * 1e6, 0)} µs · dq + reconstructed abc currents · voltage magnitude shown for headroom`;
       }
       function renderMetrics(d) {
         const mr = metrics(d);
@@ -2452,63 +2522,37 @@
         $("mVolt").textContent = fmt(mr.peakV, 3);
         $("mErr").textContent = fmt(mr.err, 3);
       }
-      function renderAt(d, q) {
-        playback.q = clamp(q, 0, 1);
-        currentVisible = Math.max(
-          2,
-          Math.floor(1 + playback.q * (d.t.length - 1)),
-        );
-        renderPlots(d, currentVisible);
-      }
-      function completePlayback() {
-        if (!playback.data) return;
-        playback.playing = false;
-        renderAt(playback.data, 1);
-        renderMetrics(playback.data);
-        $("statusText").textContent = playback.data.info.withLoad
-          ? "Loaded response complete"
-          : "No-load response complete";
-        const first = !playback.completed;
-        playback.completed = true;
-        if (first && playback.unlock) {
-          maxUnlocked = 4;
-          openStep(4);
-          $("loadSummary").textContent =
-            `${fmt(Number($("loadNm").value), 3)} N·m at ${fmt(Number($("loadAtMs").value), 0)} ms · default 80% TB`;
-        }
-      }
-      function startPlayback() {
-        if (!playback.data || playback.q >= 1) return;
-        cancelAnimationFrame(animationId);
-        playback.playing = true;
-        const started = performance.now() - playback.q * playback.duration;
-        function frame(now) {
-          if (!playback.playing) return;
-          const q = Math.min(1, (now - started) / playback.duration);
-          renderAt(playback.data, q);
-          if (q < 1) animationId = requestAnimationFrame(frame);
-          else completePlayback();
-        }
-        animationId = requestAnimationFrame(frame);
-      }
       function animate(d, unlockLoad = false) {
         cancelAnimationFrame(animationId);
+        resultStep = d.info.withLoad ? 4 : 3;
         currentVisible = 2;
         $("results").classList.add("visible");
         ["mRise", "mSettle", "mOver", "mIq", "mVolt", "mErr"].forEach(
           (id) => ($(id).textContent = "—"),
         );
-        playback = {
-          data: d,
-          q: 0,
-          duration: Math.max(100, d.info.simT * 1000),
-          playing: false,
-          resumeAfterScrub: false,
-          unlock: unlockLoad,
-          completed: false,
-        };
-        renderAt(d, 0);
-        startPlayback();
+        const started = performance.now(),
+          duration = Math.max(100, d.info.simT * 1000);
+        function frame(now) {
+          const f = Math.min(1, (now - started) / duration);
+          currentVisible = Math.max(2, Math.floor(1 + f * (d.t.length - 1)));
+          renderPlots(d, currentVisible);
+          if (f < 1) animationId = requestAnimationFrame(frame);
+          else {
+            renderMetrics(d);
+            $("statusText").textContent = d.info.withLoad
+              ? "Loaded response complete"
+              : "No-load response complete";
+            if (unlockLoad) {
+              $("acceptNoLoad").disabled = false;
+              $("statusText").textContent =
+                "Review no-load result, then accept to continue";
+            }
+            if (d.info.withLoad) {
+              $("acceptLoad").disabled = false;
+            }
+          }
+        }
+        animationId = requestAnimationFrame(frame);
       }
       function run(withLoad) {
         try {
@@ -2516,6 +2560,9 @@
           const d = simulate(withLoad);
           preparePlots(d);
           lastResult = d;
+          resultStep = withLoad ? 4 : 3;
+          $("acceptNoLoad").disabled = true;
+          $("acceptLoad").disabled = true;
           $("inputSummary").textContent =
             `${mode === "step" ? "Step" : fmt(Number($("rampMs").value), 0) + " ms ramp"} to ${fmt(Number($("targetRpm").value), 0)} rpm`;
           animate(d, !withLoad);
@@ -2524,22 +2571,44 @@
           console.error(err);
         }
       }
+      function showGvmSummary() {
+        const g = readGainVectors(),
+          m = lastResult ? metrics(lastResult) : null,
+          p = props(activeMotor);
+        $("helpTitle").textContent = "GVM-PID commissioning summary";
+        $("helpBody").innerHTML =
+          `<h3>Commissioned controller</h3><table class="tech-table"><tr><th>Endpoint</th><th>Applied vector</th><th>Role</th></tr><tr><td>\\(G_{motion}\\)</td><td>\\(K_p=${fmt(g.gm[0], 5)},\\ K_i=${fmt(g.gm[1], 5)},\\ K_d=${fmt(g.gm[2], 5)}\\)</td><td>Acceleration and command transition</td></tr><tr><td>\\(G_{ss}\\)</td><td>\\(K_p=${fmt(g.gs[0], 5)},\\ K_i=${fmt(g.gs[1], 5)},\\ K_d=${fmt(g.gs[2], 5)}\\)</td><td>Equilibrium tracking and disturbance recovery</td></tr></table><h3>Coordinator</h3><p>Soft-radial blending uses the normalized phase-space activity and continuously forms</p><div class="eq">\\(G(\\alpha)=\\alpha G_{motion}+(1-\\alpha)G_{ss}\\)</div><p>Vector scales: \\(s_M=${fmt(g.sm, 3)}\\), \\(s_{ss}=${fmt(g.ss, 3)}\\). Base torque: \\(T_B=${fmt(p.tb, 4)}\\) N·m.</p>${m ? `<h3>Load-test performance</h3><table class="tech-table"><tr><th>Metric</th><th>Result</th></tr><tr><td>Rise time</td><td>${fmt(m.rise, 2)} ms</td></tr><tr><td>Settling time</td><td>${fmt(m.settle, 2)} ms</td></tr><tr><td>Overshoot</td><td>${fmt(m.over, 3)} %</td></tr><tr><td>Peak \\(i_q\\)</td><td>${fmt(m.peakIq, 3)} A (${fmt(m.peakIq / activeMotor.imax, 3)} pu)</td></tr><tr><td>Peak voltage</td><td>${fmt(m.peakV, 3)} pu</td></tr><tr><td>Final speed error</td><td>${fmt(m.err, 3)} %</td></tr></table>` : ""}<div class="callout"><b>Interpretation.</b> This summary records the first-shot gain endpoints, soft-radial coordinator settings, and the most recent disturbance response.</div>`;
+        $("helpDialog").showModal();
+        typesetHelp();
+      }
+      function typesetHelp() {
+        const body = $("helpBody");
+        if (!window.MathJax?.typesetPromise) return Promise.resolve();
+        try {
+          window.MathJax.typesetClear?.([body]);
+        } catch (err) {
+          console.warn("MathJax typesetClear", err);
+        }
+        return window.MathJax.typesetPromise([body]).catch((err) =>
+          console.error("MathJax typeset", err),
+        );
+      }
       const helps = {
         1: {
           title: "Step 1 · Motor parameters",
-          body: `<h3>What you are defining</h3><p>The electrical and mechanical plant used by the averaged dq simulation. Every field is editable, so a literature motor can be corrected before commissioning.</p><div class="eq">T<sub>e</sub> = 1.5 p[ψ<sub>f</sub>i<sub>q</sub> + (L<sub>d</sub>−L<sub>q</sub>)i<sub>d</sub>i<sub>q</sub>]</div><p>“Base torque” is used to normalize the disturbance. When a source did not report it, the stored dataset uses a documented reconstruction.</p><div class="callout">Pole pairs p—not total poles—are entered here. Base speed is mechanical rpm.</div>`,
+          body: `<h3>What you are defining</h3><p>The electrical and mechanical plant used by the averaged dq simulation. Every field is editable, so a literature motor can be corrected before commissioning.</p><div class="eq">\\(T_e=\\frac{3}{2}p\\left[\\psi_f i_q+(L_d-L_q)i_di_q\\right]\\)</div><p>“Base torque” is used to normalize the disturbance. When a source did not report it, the stored dataset uses a documented reconstruction.</p><div class="callout">Pole pairs \\(p\\)—not total poles—are entered here. Base speed is mechanical rpm.</div>`,
         },
         2: {
-          title: "Step 2 · First-shot gains",
-          body: `<h3>Two behavior endpoints</h3><p><b>Gmotion</b> supplies acceleration authority. <b>Gss</b> supplies equilibrium stiffness and integral recovery. Soft-radial α continuously blends them.</p><div class="eq">G(α) = αG<sub>motion</sub> + (1−α)G<sub>ss</sub></div><div class="eq">K<sub>p,M</sub> = V<sub>head</sub> /(β<sub>M</sub>ω<sub>B</sub>), &nbsp; K<sub>d,M</sub> = ζ<sub>M</sub>τ<sub>e</sub>K<sub>p,M</sub></div><div class="eq">K<sub>p,S</sub> = (R<sub>s</sub>/k<sub>t</sub>)(ΔT/δω), &nbsp; K<sub>i,S</sub> = K<sub>p,S</sub>/T<sub>i,S</sub></div><p>Edit individual values or use Vector scale to move Kp, Ki and Kd together without changing their ratios.</p>`,
+          title: "Step 2 · d-axis current loop",
+          body: `<h3>Why tune \\(i_d\\) first?</h3><p>The direct GVM speed controller commands q-axis voltage, but the dq plant still needs a stable d-axis current regulator. For a surface-PMSM the target is normally \\(i_d^*=0\\), so this loop holds the flux-producing current near zero while speed control is commissioned.</p><div class="eq">\\(\\omega_{ci}=2\\pi f_{ci},\\qquad K_{p,d}=L_d\\omega_{ci},\\qquad K_{i,d}=R_s\\omega_{ci}\\)</div><table class="tech-table"><tr><th>Symbol</th><th>Meaning</th></tr><tr><td>\\(f_{ci}\\)</td><td>Selected d-axis current-loop bandwidth</td></tr><tr><td>\\(L_d,R_s\\)</td><td>d-axis inductance and stator resistance</td></tr><tr><td>\\(K_{p,d},K_{i,d}\\)</td><td>PI gains applied to the d-axis voltage command</td></tr><tr><td>\\(i_d^*\\)</td><td>Flux-current reference; set to zero for the default SPMSM case</td></tr></table><p>Edit the gains if the drive bandwidth or sampling rate requires a different design. The Run i_d response button applies a small diagnostic current step (0 to 0.1 I_max) to the d-axis electrical model, so you can verify the entered PI gains before accepting them for the speed simulation.</p>`,
         },
         3: {
-          title: "Step 3 · No-load test",
-          body: `<h3>Why no load first?</h3><p>The no-load pass isolates command tracking and the motion-to-equilibrium transition before a disturbance is introduced.</p><p>A step changes the reference immediately. A ramp reaches the same target over the selected ramp time. The trace advances from t = 0 at a 1× timebase: 600 ms of simulated response plays in 600 ms.</p><p>Drag the simulation-time bar to inspect any instant. Playback pauses while dragging and resumes from the selected time when released. After completion, dragging gives stationary inspection; Replay restarts from t = 0.</p><div class="callout">Read the outputs in order: rotor/dq view, speed, α, id/iq, phase currents, then electromagnetic and load torque. α≈1 selects motion behavior; α≈0 selects steady-state behavior.</div>`,
+          title: "Step 3 · GVM gains and no-load test",
+          body: `<h3>How the GVM speed gains are calculated</h3><p>GVM assigns two behavior endpoints instead of one fixed PID. The motion endpoint is calculated from voltage headroom and the desired acceleration authority. The steady-state endpoint is calculated from torque/speed stiffness and the integral recovery time.</p><div class="eq">\\(K_{p,M}=\\frac{V_{head}}{\\beta_M\\omega_B},\\qquad K_{d,M}=\\zeta_M\\tau_eK_{p,M},\\qquad K_{i,M}=0\\)</div><div class="eq">\\(K_{p,S}=\\frac{R_s}{k_t}\\frac{\\Delta T}{\\delta\\omega},\\qquad K_{i,S}=\\frac{K_{p,S}}{T_{i,S}},\\qquad K_{d,S}=0\\)</div><h3>How the endpoints are used</h3><div class="eq">\\(G(\\alpha)=\\alpha G_{motion}+(1-\\alpha)G_{ss},\\qquad 0\\le\\alpha\\le1\\)</div><table class="tech-table"><tr><th>Symbol</th><th>Meaning</th></tr><tr><td>\\(G_{motion}\\)</td><td>Transient PID vector used for acceleration, braking and large speed error</td></tr><tr><td>\\(G_{ss}\\)</td><td>Steady-state PID vector used for precision tracking and disturbance recovery</td></tr><tr><td>\\(K_{p,M},K_{d,M}\\)</td><td>Motion proportional and derivative gains</td></tr><tr><td>\\(K_{p,S},K_{i,S}\\)</td><td>Steady-state proportional and integral gains</td></tr><tr><td>\\(V_{head}\\)</td><td>Available voltage headroom after the back-EMF estimate</td></tr><tr><td>\\(\\beta_M,\\zeta_M\\)</td><td>Motion voltage fraction and normalized damping factor</td></tr><tr><td>\\(k_t,\\tau_e\\)</td><td>Torque constant and electrical time constant</td></tr><tr><td>\\(\\Delta T,\\delta\\omega,T_{i,S}\\)</td><td>Steady-state torque target, speed-error scale and integral recovery time</td></tr><tr><td>\\(\\alpha\\)</td><td>Soft-radial coordinator weight; 1 selects motion gains and 0 selects steady-state gains</td></tr></table><table class="tech-table"><tr><th>Item</th><th>Engineering meaning</th></tr><tr><td>Gmotion</td><td>Transient authority for acceleration, braking and large speed error</td></tr><tr><td>Gss</td><td>Low-error stiffness, integral recovery and disturbance rejection</td></tr><tr><td>Vector scale</td><td>Multiplies Kp, Ki and Kd together while preserving the endpoint ratio</td></tr><tr><td>Soft-radial \\(\\alpha\\)</td><td>Continuous coordinator; it avoids a hard gain switch during the motion-to-steady transition</td></tr></table><h3>No-load validation</h3><p>After accepting the GVM gains, select a step or ramp input and run the complete dq simulation. Check speed tracking, the motion-to-steady transition in \\(\\alpha\\), \\(i_d\\) regulation, \\(i_q\\) demand, phase currents, electromagnetic torque, and \\(v_d/v_q\\) voltage headroom before accepting the result.</p><div class="callout">This step validates the commissioned behavior; it is not an additional motor-specific optimization loop.</div>`,
         },
         4: {
           title: "Step 4 · Load disturbance",
-          body: `<h3>Same commissioning, new disturbance</h3><p>The input and gains are kept unchanged. A torque step is applied at the requested time to reveal speed dip, recovery and coordinator activity.</p><div class="eq">T<sub>L,default</sub> = 0.8 T<sub>B</sub></div><p>Choose a time after the speed transition has settled when you want a clean disturbance-rejection test. If the load is applied during the ramp, the result combines tracking and rejection.</p><div class="callout">This model does not enable field weakening. Operation beyond voltage feasibility will show through voltage saturation and tracking error.</div>`,
+          body: `<h3>Same commissioning, new disturbance</h3><p>The input and gains are kept unchanged. A torque step is applied at the requested time to reveal speed dip, recovery and coordinator activity.</p><div class="eq">\\(T_{L,\\mathrm{default}}=0.8T_B\\)</div><p>Choose a time after the speed transition has settled when you want a clean disturbance-rejection test. If the load is applied during the ramp, the result combines tracking and rejection.</p><div class="callout">This model does not enable field weakening. Operation beyond voltage feasibility will show through voltage saturation and tracking error.</div>`,
         },
       };
       $("toGains").onclick = () => {
@@ -2557,20 +2626,49 @@
           $("statusText").textContent = err.message;
         }
       };
-      $("toInput").onclick = () => {
+      $("toGvm").onclick = () => {
         try {
-          readGainVectors();
-          updateGainSummary();
+          readIdGains();
+          updateIdGainSummary();
           maxUnlocked = Math.max(maxUnlocked, 3);
           openStep(3);
-          $("statusText").textContent = "Configure no-load input";
+          $("statusText").textContent = "Review GVM speed gains";
         } catch (err) {
           $("statusText").textContent = err.message;
         }
       };
-      $("resetGains").onclick = writeGains;
+      $("acceptGvm").onclick = () => {
+        try {
+          readGainVectors();
+          updateGainSummary();
+          $("runNoLoad").disabled = false;
+          $("statusText").textContent =
+            "GVM gains accepted · configure no-load input";
+        } catch (err) {
+          $("statusText").textContent = err.message;
+        }
+      };
+      $("resetGains").onclick = () => {
+        const g = gains(activeMotor),
+          ids = ["gmKp", "gmKi", "gmKd", "gsKp", "gsKi", "gsKd"];
+        ids.forEach((id, i) => ($(id).value = fmt(g.raw[i], 8)));
+        $("gmScale").value = 1;
+        $("gsScale").value = 1;
+        updateGainSummary();
+      };
+      $("resetIdGains").onclick = () => {
+        const bw = Math.max(1, Number($("idBw").value) || C.idBw),
+          wc = 2 * PI * bw;
+        $("idKp").value = fmt(wc * activeMotor.ld, 8);
+        $("idKi").value = fmt(wc * activeMotor.rs, 8);
+        updateIdGainSummary();
+      };
       $("gmScale").oninput = updateGainSummary;
       $("gsScale").oninput = updateGainSummary;
+      $("idKp").oninput = updateIdGainSummary;
+      $("idKi").oninput = updateIdGainSummary;
+      $("idBw").oninput = updateIdGainSummary;
+      $("runIdResponse").onclick = runIdResponse;
       $("stepMode").onclick = () => {
         mode = "step";
         $("stepMode").classList.add("active");
@@ -2587,39 +2685,26 @@
       };
       $("runNoLoad").onclick = () => run(false);
       $("runLoad").onclick = () => run(true);
-      $("keepNoLoad").onclick = () => {
-        openStep(3);
-        $("statusText").textContent = "No-load result retained";
+      $("acceptNoLoad").onclick = () => {
+        if (lastResult && !lastResult.info.withLoad) {
+          maxUnlocked = 4;
+          openStep(4);
+          $("statusText").textContent = "Configure load disturbance";
+        }
       };
-      const scrub = $("timeScrubber");
-      function beginScrub() {
-        if (!lastResult || scrub.classList.contains("scrubbing")) return;
-        playback.resumeAfterScrub = playback.playing;
-        playback.playing = false;
-        cancelAnimationFrame(animationId);
-        scrub.classList.add("scrubbing");
-      }
-      function endScrub() {
-        if (!scrub.classList.contains("scrubbing")) return;
-        scrub.classList.remove("scrubbing");
-        if (!lastResult) return;
-        if (playback.q >= 1) completePlayback();
-        else if (playback.resumeAfterScrub) startPlayback();
-        playback.resumeAfterScrub = false;
-      }
-      scrub.addEventListener("pointerdown", beginScrub);
-      scrub.addEventListener("keydown", beginScrub);
-      scrub.addEventListener("input", () => {
-        if (!lastResult) return;
-        if (!scrub.classList.contains("scrubbing")) beginScrub();
-        renderAt(lastResult, Number(scrub.value) / 1000);
-        $("statusText").textContent = "Manual inspection · release to continue";
-      });
-      addEventListener("pointerup", endScrub);
-      scrub.addEventListener("keyup", endScrub);
-      scrub.addEventListener("change", endScrub);
+      $("acceptLoad").onclick = () => {
+        if (lastResult && lastResult.info.withLoad) {
+          showGvmSummary();
+          $("statusText").textContent =
+            "Load result accepted · summary available";
+        }
+      };
+      $("keepNoLoad").onclick = () => {
+        $("acceptNoLoad").click();
+      };
       $("replay").onclick = () =>
-        lastResult && animate(lastResult, !lastResult.info.withLoad);
+        lastResult &&
+        animate(lastResult, lastResult.info.withLoad ? false : true);
       motorSel.onchange = selectMotor;
       const tabs = [...document.querySelectorAll(".step-tab")];
       tabs.forEach((tab) => {
@@ -2652,6 +2737,7 @@
             $("helpTitle").textContent = h.title;
             $("helpBody").innerHTML = h.body;
             dialog.showModal();
+            typesetHelp();
           }),
       );
       $("closeHelp").onclick = () => dialog.close();
